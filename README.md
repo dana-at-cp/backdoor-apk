@@ -21,4 +21,4 @@ root@kali:~/Android/evol-lab/BaiduBrowserRat# ./backdoor-apk.sh BaiduBrowser.apk
 root@kali:~/Android/evol-lab/BaiduBrowserRat#
 ```
 
-The recompiled APK will be found in the 'original/dist' directory. Install the APK on an Android device and handle the meterpreter connection at the specified IP and port.
+The recompiled APK will be found in the 'original/dist' directory. Install the APK on a compatible Android device, run it, and handle the meterpreter connection at the specified IP and port.
