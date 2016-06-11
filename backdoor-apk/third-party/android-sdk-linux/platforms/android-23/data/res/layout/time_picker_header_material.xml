@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~ Copyright (C) 2013 The Android Open Source Project
+  ~
+  ~ Licensed under the Apache License, Version 2.0 (the "License");
+  ~ you may not use this file except in compliance with the License.
+  ~ You may obtain a copy of the License at
+  ~
+  ~      http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~ Unless required by applicable law or agreed to in writing, software
+  ~ distributed under the License is distributed on an "AS IS" BASIS,
+  ~ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~ See the License for the specific language governing permissions and
+  ~ limitations under the License
+  -->
+
+<!-- This layout is duplicated in land/time_picker_material.xml, so any
+     changes made here need to be manually copied over. -->
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+                android:id="@+id/time_header"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:padding="@dimen/timepicker_separator_padding"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp">
+
+    <!-- The hour should always be to the left of the separator,
+         regardless of the current locale's layout direction. -->
+    <TextView
+        android:id="@+id/hours"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toLeftOf="@+id/separator"
+        android:layout_alignBaseline="@+id/separator"
+        android:textAppearance="@style/TextAppearance.Material.TimePicker.TimeLabel"
+        android:singleLine="true"
+        android:ellipsize="none"
+        android:gravity="right" />
+
+    <TextView
+        android:id="@+id/separator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginLeft="@dimen/timepicker_separator_padding"
+        android:layout_marginRight="@dimen/timepicker_separator_padding"
+        android:layout_centerInParent="true"
+        android:textAppearance="@style/TextAppearance.Material.TimePicker.TimeLabel"
+        android:importantForAccessibility="no" />
+
+    <!-- The minutes should always be to the left of the separator,
+         regardless of the current locale's layout direction. -->
+    <TextView
+        android:id="@+id/minutes"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@+id/separator"
+        android:layout_alignBaseline="@+id/separator"
+        android:textAppearance="@style/TextAppearance.Material.TimePicker.TimeLabel"
+        android:singleLine="true"
+        android:ellipsize="none"
+        android:gravity="left" />
+
+    <!-- The layout alignment of this view will switch between toRightOf
+         @id/minutes and toLeftOf @id/hours depending on the locale. -->
+    <LinearLayout
+        android:id="@+id/ampm_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@+id/minutes"
+        android:layout_alignBaseline="@+id/minutes"
+        android:paddingStart="8dp"
+        android:paddingEnd="8dp"
+        android:orientation="vertical"
+        android:baselineAlignedChildIndex="1">
+        <CheckedTextView
+            android:id="@+id/am_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingTop="@dimen/timepicker_am_top_padding"
+            android:textAppearance="@style/TextAppearance.Material.TimePicker.AmPmLabel"
+            android:lines="1"
+            android:ellipsize="none" />
+        <CheckedTextView
+            android:id="@+id/pm_label"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingTop="@dimen/timepicker_pm_top_padding"
+            android:textAppearance="@style/TextAppearance.Material.TimePicker.AmPmLabel"
+            android:lines="1"
+            android:ellipsize="none" />
+    </LinearLayout>
+</RelativeLayout>

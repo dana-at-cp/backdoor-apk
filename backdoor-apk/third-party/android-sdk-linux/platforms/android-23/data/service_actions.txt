@@ -1,0 +1,17 @@
+android.intent.action.RESPOND_VIA_MESSAGE
+android.intent.action.TTS_SERVICE
+android.media.browse.MediaBrowserService
+android.nfc.cardemulation.action.HOST_APDU_SERVICE
+android.nfc.cardemulation.action.OFF_HOST_APDU_SERVICE
+android.service.carrier.CarrierMessagingService
+android.service.chooser.ChooserTargetService
+android.service.dreams.DreamService
+android.service.notification.ConditionProviderService
+android.service.notification.NotificationListenerService
+android.service.trust.TrustAgentService
+android.service.voice.VoiceInteractionService
+android.service.wallpaper.WallpaperService
+android.speech.RecognitionService
+android.telecom.ConnectionService
+android.telecom.InCallService
+android.view.InputMethod
