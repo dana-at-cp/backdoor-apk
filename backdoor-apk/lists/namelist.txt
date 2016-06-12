@@ -25,7 +25,6 @@
 9
 ILMI
 a
-a.auth-ns
 a01
 a02
 a1
@@ -122,7 +121,6 @@ aw
 ayuda
 az
 b
-b.auth-ns
 b01
 b02
 b1
@@ -204,7 +202,6 @@ bw
 by
 bz
 c
-c.auth-ns
 ca
 cache
 cafe
@@ -662,7 +659,6 @@ frontdesk
 fs
 fsp
 ftp
-ftp-
 ftp0
 ftp2
 ftpserver
@@ -815,7 +811,6 @@ ipmonitor
 ipsec
 ipsec-gw
 ipv6
-ipv6.teredo
 iq
 ir
 irc
@@ -1123,7 +1118,6 @@ november
 np
 nr
 ns
-ns-
 ns0
 ns01
 ns02
@@ -1864,7 +1858,6 @@ wusage
 wv
 ww
 www
-www-
 www-01
 www-02
 www-1
