@@ -66,7 +66,14 @@ if [ $rc != 0 ]; then
 fi
 
 echo -n "[*] Merging permissions of original and payload projects...";
-placeholder=`openssl rand -hex 16`
+# build random hex placeholder value without openssl
+placeholder=''
+for i in `seq 1 4`; do
+  rand_num=`shuf -i 1-9223372036854775807 -n 1`;
+  hex=`printf '%x' $rand_num`;
+  placeholder="$placeholder$hex";
+done
+echo "placeholder value: $placeholder" >>$LOG_FILE 2>&1
 tmp_perms_file=$MY_PATH/perms.tmp
 original_manifest_file=$MY_PATH/original/AndroidManifest.xml
 payload_manifest_file=$MY_PATH/payload/AndroidManifest.xml
