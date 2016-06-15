@@ -10,6 +10,7 @@ rm -rf original
 rm -rf payload
 rm Rat.apk
 rm perms.tmp
+rm signing.keystore
 rm run.log
 
 exit 0

