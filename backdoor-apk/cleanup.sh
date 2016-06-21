@@ -4,13 +4,12 @@
 
 # usage: ./cleanup.sh
 
-rm -rf bin
-rm -rf libs
-rm -rf original
-rm -rf payload
-rm Rat.apk
-rm perms.tmp
-rm signing.keystore
-rm run.log
+rm -vrf bin
+rm -vrf libs
+rm -vrf original
+rm -vrf payload
+rm -v Rat.apk
+rm -v perms.tmp
+rm -v signing.keystore
 
 exit 0
