@@ -230,7 +230,18 @@ launcher_line_num=`grep -n "android.intent.category.LAUNCHER" $MY_PATH/original/
 echo "Found launcher line in manifest file: $launcher_line_num" >>$LOG_FILE 2>&1
 activity_line_count=`grep -B $launcher_line_num "android.intent.category.LAUNCHER" $MY_PATH/original/AndroidManifest.xml |grep -c "<activity"`
 echo "Activity lines found above launcher line: $activity_line_count" >>$LOG_FILE 2>&1
-tmp=`grep -B $launcher_line_num "android.intent.category.LAUNCHER" $MY_PATH/original/AndroidManifest.xml|grep -B $launcher_line_num "android.intent.action.MAIN"|grep "<activity"|tail -1|grep -o -P 'android:name="[^\"]+"'|sed 's/\"//g'|sed 's/android:name=//g'|sed 's/\./\//g'`
+# should get a value here if launcher line is within an activity-alias element
+android_target_activity=`grep -B $launcher_line_num "android.intent.category.LAUNCHER" $MY_PATH/original/AndroidManifest.xml|grep -B $launcher_line_num "android.intent.action.MAIN"|grep "<activity"|tail -1|grep -o -P 'android:targetActivity="[^\"]+"'|sed 's/\"//g'|sed 's/android:targetActivity=//g'|sed 's/\./\//g'`
+echo "Value of android_target_activity: $android_target_activity" >>$LOG_FILE 2>&1
+android_name=`grep -B $launcher_line_num "android.intent.category.LAUNCHER" $MY_PATH/original/AndroidManifest.xml|grep -B $launcher_line_num "android.intent.action.MAIN"|grep "<activity"|tail -1|grep -o -P 'android:name="[^\"]+"'|sed 's/\"//g'|sed 's/android:name=//g'|sed 's/\./\//g'`
+echo "Value of android_name: $android_name" >>$LOG_FILE 2>&1
+if [ -z $android_target_activity ]; then
+  echo "The launcher line appears to be within an activity element" >>$LOG_FILE 2>&1
+  tmp=$android_name
+else
+  echo "The launcher line appears to be within an activity-alias element" >>$LOG_FILE 2>&1
+  tmp=$android_target_activity
+fi
 echo "Value of tmp: $tmp" >>$LOG_FILE 2>&1
 smali_file_to_hook=$MY_PATH/original/smali/$tmp.smali
 if [ ! -f $smali_file_to_hook ]; then
@@ -269,7 +280,8 @@ keystore=$MY_PATH/signing.keystore
 compiled_apk=$MY_PATH/original/dist/$ORIG_APK_FILE
 unaligned_apk=$MY_PATH/original/dist/unaligned.apk
 
-dname=`$UNZIP -p $ORIG_APK_FILE META-INF/CERT.RSA |$KEYTOOL -printcert |grep "Owner:" |sed 's/Owner: //g'`
+orig_rsa_cert=`$UNZIP -l $ORIG_APK_FILE |grep ".RSA" |awk ' { print $4 } '`
+dname=`$UNZIP -p $ORIG_APK_FILE $orig_rsa_cert |$KEYTOOL -printcert |grep "Owner:" |sed 's/Owner: //g'`
 echo "dname value: $dname" >>$LOG_FILE 2>&1
 
 echo -n "[*] Generating RSA key for signing..."
