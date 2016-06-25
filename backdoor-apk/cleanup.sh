@@ -10,6 +10,7 @@ rm -vrf original
 rm -vrf payload
 rm -v Rat.apk
 rm -v perms.tmp
+rm -v persistence.hook
 rm -v signing.keystore
 
 exit 0
