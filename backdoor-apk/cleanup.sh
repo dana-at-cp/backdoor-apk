@@ -11,6 +11,7 @@ rm -vrf payload
 rm -v Rat.apk
 rm -v perms.tmp
 rm -v persistence.hook
+rm -v obfuscate.method
 rm -v signing.keystore
 
 exit 0
