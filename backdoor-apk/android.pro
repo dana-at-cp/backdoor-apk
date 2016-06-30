@@ -16,7 +16,7 @@
 # before the dex compiler converts it into Dalvik code (.dex).
 
 -injars   bin/classes
-#-injars  libs
+-injars  libs
 -outjars  bin/classes-processed.jar
 
 -libraryjars third-party/android-sdk-linux/platforms/android-23/android.jar
@@ -161,6 +161,10 @@
 # -keep public class mypackage.MyClass
 # -keep public interface mypackage.MyInterface
 # -keep public class * implements mypackage.MyInterface
+
+-keep,allowobfuscation public class net.dirtybox.util.stringobfuscator.Helper {
+    public static java.lang.String obfuscate(java.lang.String);
+}
 
 # If you wish, you can let the optimization step remove Android logging calls.
 

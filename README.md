@@ -16,6 +16,7 @@ root@kali:~/Android/evol-lab/BaiduBrowserRat# ./backdoor-apk.sh BaiduBrowser.apk
 [*] Creating new directories in original project for RAT smali files...done.
 [*] Copying RAT smali files to new directories in original project...done.
 [*] Fixing RAT smali files...done.
+[*] Obfuscating const-string values in RAT smali files...done.
 [*] Locating smali file to hook in original project...done.
 [*] Adding hook in original smali file...done.
 [*] Adding persistence hook in original project...done.
