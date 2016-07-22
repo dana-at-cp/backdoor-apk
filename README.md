@@ -29,3 +29,5 @@ root@kali:~/Android/evol-lab/BaiduBrowserRat#
 ```
 
 The recompiled APK will be found in the 'original/dist' directory. Install the APK on a compatible Android device, run it, and handle the meterpreter connection at the specified IP and port.
+Tutorial:
+https://www.youtube.com/watch?v=m3v2YNiiNKY
