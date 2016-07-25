@@ -119,7 +119,7 @@ echo -n "[*] Merging permissions of original and payload projects..."
 # build random hex placeholder value without openssl
 placeholder=''
 for i in `seq 1 4`; do
-  rand_num=`shuf -i 1-9223372036854775807 -n 1`
+  rand_num=`shuf -i 1-2147483647 -n 1`
   hex=`printf '%x' $rand_num`
   placeholder="$placeholder$hex"
 done
