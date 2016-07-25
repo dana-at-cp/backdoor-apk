@@ -3,6 +3,17 @@
 Release History
 ---------------
 
+0.1.2 (2016-07-25)
+++++++++++++++++++
+
+**Bug Fixes**
+
+- Placeholder logic no longer fails on Linux systems configured for 32 bit long values
+
+**Miscellaneous**
+
+- Added AUTHORS and HISTORY files
+
 0.1.1 (2016-06-30) [moar-sneaky]
 ++++++++++++++++++++++++++++++++
 
