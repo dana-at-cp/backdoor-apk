@@ -2,6 +2,8 @@
 
 # backdoor-apk.sh
 
+# version: 0.1.2
+
 # Dana James Traversie
 # Security Engineer
 # Check Point Software Technologies, Ltd.
