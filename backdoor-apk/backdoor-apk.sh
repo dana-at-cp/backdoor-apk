@@ -6,6 +6,8 @@
 # Security Engineer
 # Check Point Software Technologies, Ltd.
 
+# version: 0.1.2
+
 # usage: ./backdoor-apk.sh original.apk
 
 # modify the following values as necessary
