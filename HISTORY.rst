@@ -14,8 +14,11 @@ Release History
 
 **Miscellaneous**
 
-- First time repackaged APK avoids detection by all mobile antivirus vendors on virus total
 - README file updates
+
+**Notes**
+
+- First time repackaged APK avoids detection by all mobile antivirus vendors on virus total
 
 0.1.0 (2016-06-25) [persistence]
 ++++++++++++++++++++++++++++++++
