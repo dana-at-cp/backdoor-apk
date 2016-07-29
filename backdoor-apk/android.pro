@@ -162,6 +162,10 @@
 # -keep public interface mypackage.MyInterface
 # -keep public class * implements mypackage.MyInterface
 
+-keepclassmembers public class com.metasploit.stage.PayloadTrustManager {
+    public static void useFor(java.net.URLConnection);
+}
+
 -keep,allowobfuscation public class net.dirtybox.util.stringobfuscator.Helper {
     public static java.lang.String obfuscate(java.lang.String);
 }
