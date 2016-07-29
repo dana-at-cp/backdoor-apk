@@ -3,6 +3,13 @@
 Release History
 ---------------
 
+0.1.3 (2016-07-29)
+++++++++++++++++++
+
+**Bug Fixes**
+
+- Proguard processing no longer breaks the Metasploit android/meterpreter/reverse_https payload in repackaged APKs
+
 0.1.2 (2016-07-25)
 ++++++++++++++++++
 
