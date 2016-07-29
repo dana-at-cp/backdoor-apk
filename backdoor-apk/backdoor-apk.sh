@@ -1,14 +1,14 @@
 #!/bin/bash
 
-# backdoor-apk.sh
+# file: backdoor-apk.sh
 
-# version: 0.1.2
+# version: 0.1.3
+
+# usage: ./backdoor-apk.sh original.apk
 
 # Dana James Traversie
 # Security Engineer
 # Check Point Software Technologies, Ltd.
-
-# usage: ./backdoor-apk.sh original.apk
 
 # modify the following values as necessary
 MSFVENOM=msfvenom
