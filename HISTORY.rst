@@ -3,6 +3,20 @@
 Release History
 ---------------
 
+0.1.4 (2016-09-20)
+++++++++++++++++++
+
+**Improvements**
+
+- New UI enhancements allow selecting Android payloads and entering LHOST and LPORT values
+- New ascii art is displayed on script execution
+- First attempt at improving the readability of logging output
+- Apktool is no longer provided as a third-party tool, backdoor-apk.sh now expects apktool to be properly setup on the system
+
+**Miscellaneous**
+
+- README and HISTORY file updates
+
 0.1.3 (2016-07-29)
 ++++++++++++++++++
 
