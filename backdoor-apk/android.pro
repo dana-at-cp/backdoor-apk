@@ -1,15 +1,8 @@
 #
-# This ProGuard configuration file illustrates how to process Android
-# applications.
-# Usage:
-#     java -jar proguard.jar @android.pro
+# This ProGuard configuration file is part of the backdoor-apk project.
 #
-# If you're using the Android SDK, the Ant release build and Eclipse export
-# already take care of the proper settings. You only need to enable ProGuard
-# by commenting in the corresponding line in project.properties. You can still
-# add project-specific configuration in proguard-project.txt.
+# GitHub: https://github.com/dana-at-cp/backdoor-apk
 #
-# This configuration file is for custom, stand-alone builds.
 
 # Specify the input jars, output jars, and library jars.
 # Note that ProGuard works with Java bytecode (.class),

