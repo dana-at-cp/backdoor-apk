@@ -3,6 +3,13 @@
 Release History
 ---------------
 
+0.1.5 (2016-10-17)
+++++++++++++++++++
+
+**Bug Fixes**
+
+- The logic used to extract the original certificate dname value no longer breaks with non-English versions of keytool
+
 0.1.4 (2016-09-20)
 ++++++++++++++++++
 
