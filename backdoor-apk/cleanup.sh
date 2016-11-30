@@ -26,5 +26,6 @@ rmfilez perms.tmp
 rmfilez persistence.hook
 rmfilez obfuscate.method
 rmfilez signing.keystore
+rmfilez backdoor-apk.rc
 
 exit 0
