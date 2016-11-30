@@ -3,6 +3,17 @@
 Release History
 ---------------
 
+0.1.7 (2016-11-30)
+++++++++++++++++++
+
+**Improvements**
+
+- Automatic generation of Metasploit resource script to handle selected payload (credit to John Troony for the suggestion)
+
+**Bug Fixes**
+
+- Fixed persistence hook breakage caused by upstream changes in Metasploit
+
 0.1.6 (2016-11-29)
 ++++++++++++++++++
 

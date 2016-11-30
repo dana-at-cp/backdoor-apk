@@ -1,6 +1,17 @@
 Virus Total Results
 -------------------
 
+(2016-11-30)
+++++++++++++
+
+- File: Pandora_7.4.apk
+- SHA256: 5a56757ec53970d93aa769e3abb6a915be7c4891f0437914f2541e8a7920b439
+- Payload: android/meterpreter/reverse_https
+- LHOST: 10.6.9.31
+- LPORT: 443
+- Notes: Two mobile antivirus detections
+- URL: https://www.virustotal.com/en/file/5a56757ec53970d93aa769e3abb6a915be7c4891f0437914f2541e8a7920b439/analysis/1480520820/
+
 (2016-11-29)
 ++++++++++++
 - File: AdobeReader.apk
