@@ -2,7 +2,7 @@
 
 # file: backdoor-apk.sh
 
-# version: 0.1.6
+# version: 0.1.7
 
 # usage: ./backdoor-apk.sh original.apk
 
@@ -151,7 +151,7 @@ function get_lport {
 function init {
   echo "Running backdoor-apk at $TIME_OF_RUN" >$LOG_FILE 2>&1
   print_ascii_art
-  echo "[*] Running backdoor-apk.sh v0.1.6 on $TIME_OF_RUN"
+  echo "[*] Running backdoor-apk.sh v0.1.7 on $TIME_OF_RUN"
   consult_which $MSFVENOM
   consult_which $DEX2JAR
   consult_which $UNZIP
