@@ -492,9 +492,8 @@ keystore=$MY_PATH/signing.keystore
 compiled_apk=$MY_PATH/original/dist/$ORIG_APK_FILE
 unaligned_apk=$MY_PATH/original/dist/unaligned.apk
 
-orig_rsa_cert=`$UNZIP -l $ORIG_APK_FILE |grep ".RSA" |awk ' { print $4 } '`
-dname=`$UNZIP -p $ORIG_APK_FILE $orig_rsa_cert |$KEYTOOL -printcert |head -n 1 |sed 's/^.*: CN=/CN=/g'`
-echo "dname value: $dname" >>$LOG_FILE 2>&1
+dname=`$KEYTOOL -J-Duser.language=en -printcert -jarfile $ORIG_APK_FILE |grep "Owner:" |sed 's/^.*: //g'`
+echo "Original dname value: $dname" >>$LOG_FILE 2>&1
 
 echo -n "[*] Generating RSA key for signing..."
 $KEYTOOL -genkey -noprompt -alias signing.key -dname "$dname" -keystore $keystore -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 >>$LOG_FILE 2>&1
