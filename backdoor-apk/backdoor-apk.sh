@@ -495,8 +495,21 @@ unaligned_apk=$MY_PATH/original/dist/unaligned.apk
 dname=`$KEYTOOL -J-Duser.language=en -printcert -jarfile $ORIG_APK_FILE |grep "Owner:" |sed 's/^.*: //g'`
 echo "Original dname value: $dname" >>$LOG_FILE 2>&1
 
+valid_from_line=`$KEYTOOL -J-Duser.language=en -printcert -jarfile $ORIG_APK_FILE |grep "Valid from:"`
+echo "Original valid from line: $valid_from_line" >>$LOG_FILE 2>&1
+from_date=$(sed 's/^Valid from://g' <<< $valid_from_line |sed 's/until:.\+$//g' |sed 's/^[[:space:]]*//g' |sed 's/[[:space:]]*$//g')
+echo "Original from date: $from_date" >>$LOG_FILE 2>&1
+to_date=$(sed 's/^Valid from:.\+until://g' <<< $valid_from_line |sed 's/^[[:space:]]*//g' |sed 's/[[:space:]]*$//g')
+echo "Original to date: $to_date" >>$LOG_FILE 2>&1
+from_date_str=`date --date="$from_date" +"%Y/%m/%d %T"`
+echo "Value of from_date_str: $from_date_str" >>$LOG_FILE 2>&1
+end_ts=$(date -ud "$to_date" +'%s')
+start_ts=$(date -ud "$from_date" +'%s')
+validity=$(( ( (${end_ts} - ${start_ts}) / (60*60*24) ) ))
+echo "Value of validity: $validity" >>$LOG_FILE 2>&1
+
 echo -n "[*] Generating RSA key for signing..."
-$KEYTOOL -genkey -noprompt -alias signing.key -dname "$dname" -keystore $keystore -storepass android -keypass android -keyalg RSA -keysize 2048 -validity 10000 >>$LOG_FILE 2>&1
+$KEYTOOL -genkey -noprompt -alias signing.key -startdate "$from_date_str" -validity $validity -dname "$dname" -keystore $keystore -storepass android -keypass android -keyalg RSA -keysize 2048 >>$LOG_FILE 2>&1
 rc=$?
 echo "done."
 if [ $rc != 0 ]; then
