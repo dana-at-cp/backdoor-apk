@@ -3,6 +3,19 @@
 Release History
 ---------------
 
+0.1.8 (2016-12-20)
+++++++++++++++++++
+
+**Improvements**
+
+- The generated signing cert uses the valid from date and validity value from the original APK cert
+
+**Bug Fixes**
+
+- Fixed various issues with the original cert info extraction logic
+- Fixed minor issue with the proguard configuration file
+- Fixed namelist values that include dashes causing Apktool recompilation errors
+
 0.1.7 (2016-11-30)
 ++++++++++++++++++
 

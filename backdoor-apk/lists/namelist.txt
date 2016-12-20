@@ -524,7 +524,7 @@ dmail
 dmz
 dnews
 dns
-dns-2
+dns2
 dns0
 dns1
 dns2
@@ -550,8 +550,8 @@ dynamic
 dynip
 dz
 e
-e-com
-e-commerce
+ecom
+ecommerce
 e0
 eagle
 earth
@@ -663,7 +663,6 @@ ftp0
 ftp2
 ftpserver
 fw
-fw-1
 fw1
 fwsm
 fwsm0
@@ -809,7 +808,7 @@ iowa
 iplanet
 ipmonitor
 ipsec
-ipsec-gw
+ipsecgw
 ipv6
 iq
 ir
@@ -1033,8 +1032,8 @@ mq
 mr
 mrtg
 ms
-ms-exchange
-ms-sql
+msexchange
+mssql
 msexchange
 mssql
 mssql0
@@ -1290,7 +1289,7 @@ pi
 pics
 pictures
 pink
-pipex-gw
+pipexgw
 pittsburgh
 pix
 pk
@@ -1858,11 +1857,11 @@ wusage
 wv
 ww
 www
-www-01
-www-02
-www-1
-www-2
-www-int
+www01
+www02
+www1
+www2
+wwwint
 www0
 www01
 www02
@@ -1875,7 +1874,7 @@ wwwmail
 wy
 wyoming
 x
-x-ray
+xray
 xi
 xlogan
 xmail
@@ -1889,7 +1888,7 @@ young
 yt
 yu
 z
-z-log
+zlog
 za
 zebra
 zera
