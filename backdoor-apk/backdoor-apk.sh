@@ -492,10 +492,10 @@ keystore=$MY_PATH/signing.keystore
 compiled_apk=$MY_PATH/original/dist/$ORIG_APK_FILE
 unaligned_apk=$MY_PATH/original/dist/unaligned.apk
 
-dname=`$KEYTOOL -J-Duser.language=en -printcert -jarfile $ORIG_APK_FILE |grep "Owner:" |sed 's/^.*: //g'`
+dname=`$KEYTOOL -J-Duser.language=en -printcert -jarfile $ORIG_APK_FILE |grep -m 1 "Owner:" |sed 's/^.*: //g'`
 echo "Original dname value: $dname" >>$LOG_FILE 2>&1
 
-valid_from_line=`$KEYTOOL -J-Duser.language=en -printcert -jarfile $ORIG_APK_FILE |grep "Valid from:"`
+valid_from_line=`$KEYTOOL -J-Duser.language=en -printcert -jarfile $ORIG_APK_FILE |grep -m 1 "Valid from:"`
 echo "Original valid from line: $valid_from_line" >>$LOG_FILE 2>&1
 from_date=$(sed 's/^Valid from://g' <<< $valid_from_line |sed 's/until:.\+$//g' |sed 's/^[[:space:]]*//g' |sed 's/[[:space:]]*$//g')
 echo "Original from date: $from_date" >>$LOG_FILE 2>&1
