@@ -3,6 +3,17 @@
 Release History
 ---------------
 
+0.1.9 (2016-12-30)
+++++++++++++++++++
+
+**Improvements**
+
+- Dynamic obfuscation of const-string values in RAT smali code
+
+**Bug Fixes**
+
+- Fixed invalid date bug in the original cert info extraction logic
+
 0.1.8 (2016-12-20)
 ++++++++++++++++++
 

