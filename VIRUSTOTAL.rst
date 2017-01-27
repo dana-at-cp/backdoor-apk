@@ -9,7 +9,7 @@ Virus Total Results
 - Payload: android/meterpreter/reverse_https
 - LHOST: NNN.NNN.NNN.NNN
 - LPORT: 443
-- Notes: Three mobile antivirus detections
+- Notes: Three mobile antivirus detections but one vendor also alerts on the latest versions of Pandora from the play store
 - URL: https://www.virustotal.com/en/file/8ebe1bca162ed45cd27e5a44f3d986d9967686dc68d474d5725dbdfcca09bccc/analysis/1485281365/
 
 (2016-11-30)
