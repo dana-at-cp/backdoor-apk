@@ -436,9 +436,22 @@ else
   tmp=$android_target_activity
 fi
 echo "Value of tmp: $tmp" >>$LOG_FILE 2>&1
+if [[ $tmp != *"$total_package"* ]]; then
+  tmp=$total_package$tmp
+fi
 smali_file_to_hook=$MY_PATH/original/smali/$tmp.smali
 if [ ! -f $smali_file_to_hook ]; then
-  smali_file_to_hook=$MY_PATH/original/smali/$total_package$tmp.smali
+  found=0
+  index=2
+  max=1000
+  while [ $found -eq 0 ]; do
+    smali_file_to_hook="$MY_PATH/original/smali_classes$index/$tmp.smali"
+    if [[ -f $smali_file_to_hook || $index -eq $max ]]; then
+      let found=found+1
+    else
+      let index=index+1
+    fi
+  done
 fi
 echo "The smali file to hook: $smali_file_to_hook" >>$LOG_FILE 2>&1
 echo "done."
