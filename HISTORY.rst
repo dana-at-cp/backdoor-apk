@@ -3,6 +3,13 @@
 Release History
 ---------------
 
+0.2.0 (2017-02-17)
+++++++++++++++++++
+
+**Bug Fixes**
+
+- Fixed smali file to hook logic to handle multidex APK files
+
 0.1.9 (2016-12-30)
 ++++++++++++++++++
 
