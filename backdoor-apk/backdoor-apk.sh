@@ -436,7 +436,8 @@ else
   tmp=$android_target_activity
 fi
 echo "Value of tmp: $tmp" >>$LOG_FILE 2>&1
-if [[ $tmp != *"$total_package"* ]]; then
+# add package from manifest if needed
+if [[ $tmp == /* ]]; then
   tmp=$total_package$tmp
 fi
 smali_file_to_hook=$MY_PATH/original/smali/$tmp.smali
