@@ -25,9 +25,9 @@ UNZIP=unzip
 KEYTOOL=keytool
 JARSIGNER=jarsigner
 APKTOOL=apktool
-PROGUARD=third-party/proguard5.2.1/lib/proguard
-DX=third-party/android-sdk-linux/build-tools/23.0.3/dx
-ZIPALIGN=third-party/android-sdk-linux/build-tools/23.0.3/zipalign
+PROGUARD=third-party/proguard5.3.2/lib/proguard
+DX=third-party/android-sdk-linux/build-tools/25.0.2/dx
+ZIPALIGN=third-party/android-sdk-linux/build-tools/25.0.2/zipalign
 # file paths and misc
 MY_PATH=`pwd`
 ORIG_APK_FILE=$1
