@@ -12,7 +12,7 @@
 -injars  libs
 -outjars  bin/classes-processed.jar
 
--libraryjars third-party/android-sdk-linux/platforms/android-23/android.jar
+-libraryjars third-party/android-sdk-linux/platforms/android-25/android.jar
 #-libraryjars /usr/local/android-sdk/add-ons/google_apis-7_r01/libs/maps.jar
 # ...
 

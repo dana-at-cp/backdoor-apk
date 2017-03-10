@@ -3,6 +3,18 @@
 Release History
 ---------------
 
+0.2.1 (2017-03-10)
+++++++++++++++++++
+
+**Improvements**
+
+- Updated third-party software and tools
+
+**Bug Fixes**
+
+- Fixed smali file to hook logic to properly handle shorthand class names in activity elements in the APK manifest
+- Fixed smali file to hook logic to handle cases where a super class must be hooked
+
 0.2.0 (2017-02-17)
 ++++++++++++++++++
 
