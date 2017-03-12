@@ -38,6 +38,17 @@ TIME_OF_RUN=`date`
 # for functions
 FUNC_RESULT=""
 cp $1 $MY_PATH/app.apk >>$LOG_FILE 2>&1
+
+#check if proguard is installed
+which proguard > /dev/null 2>&1
+if [ "$?" -eq "0" ]; then
+echo ""
+else
+echo ""
+echo "Proguard not detected , Installing it"
+sudo apt-get install proguard -y
+fi
+
 # functions
 function find_smali_file {
   # $1 = smali_file_to_hook
@@ -62,16 +73,6 @@ function find_smali_file {
     FUNC_RESULT=$1
     return 0
   fi
-
-#check if proguard is installed
-which proguard > /dev/null 2>&1
-if [ "$?" -eq "0" ]; then
-echo ""
-else
-echo ""
-echo "Proguard not detected , Installing it"
-sudo apt-get install proguard -y
-fi
 }
 
 function hook_smali_file {
