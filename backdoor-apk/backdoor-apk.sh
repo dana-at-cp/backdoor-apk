@@ -46,7 +46,7 @@ echo ""
 else
 echo ""
 echo "Proguard not detected , Installing it"
-sudo apt-get install proguard -y
+sudo apt-get install proguard=5.0-1 -y
 fi
 
 # functions
