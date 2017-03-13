@@ -1,5 +1,5 @@
 # backdoor-apk
-backdoor-apk is a shell script that simplifies the process of adding a backdoor to any Android APK file. Users of this shell script should have working knowledge of Linux, Bash, Openjdk8, Metasploit, Apktool, the Android SDK, smali, etc. This shell script is provided as-is without warranty of any kind and is intended for educational purposes only.
+backdoor-apk is a shell script that simplifies the process of adding a backdoor to any Android APK file. Users of this shell script should have working knowledge of Linux, Bash, Openjdk8, Metasploit, the Android SDK, smali, etc. This shell script is provided as-is without warranty of any kind and is intended for educational purposes only.
 
 Usage:
 
