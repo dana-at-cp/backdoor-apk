@@ -1,5 +1,5 @@
 # backdoor-apk
-backdoor-apk is a shell script that simplifies the process of adding a backdoor to any Android APK file. Users of this shell script should have working knowledge of Linux, Bash, Metasploit, Apktool, the Android SDK, smali, etc. This shell script is provided as-is without warranty of any kind and is intended for educational purposes only.
+backdoor-apk is a shell script that simplifies the process of adding a backdoor to any Android APK file. Users of this shell script should have working knowledge of Linux, Bash, Openjdk8, Metasploit, Apktool, the Android SDK, smali, etc. This shell script is provided as-is without warranty of any kind and is intended for educational purposes only.
 
 Usage:
 
@@ -49,4 +49,4 @@ ________|__________|__________________________________________
 root@kali:~/Android/evol-lab/BaiduBrowserRat#
 ```
 
-The recompiled APK will be found in the 'original/dist' directory. Install the APK on a compatible Android device, run it, and handle the meterpreter connection via the generated resource script: msfconsole -r backdoor-apk.rc
+The recompiled APK will be found in the main directory of backdoor-apk with the name 'app_rat.apk'. Install the APK on a compatible Android device, run it, and handle the meterpreter connection via the generated resource script: msfconsole -r backdoor-apk.rc
