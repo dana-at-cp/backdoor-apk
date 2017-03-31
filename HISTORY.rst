@@ -3,6 +3,13 @@
 Release History
 ---------------
 
+0.2.2 (2017-03-31)
+++++++++++++++++++
+
+**Improvements**
+
+- Upgraded const-string obfuscation technique used in RAT smali files
+
 0.2.1 (2017-03-10)
 ++++++++++++++++++
 
