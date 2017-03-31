@@ -430,10 +430,10 @@ so_class_suffix=`echo $stringobfuscator_class |awk -F "/" '{ printf "%s.smali", 
 echo "StringObfuscator class suffix: $so_class_suffix" >>$LOG_FILE 2>&1
 so_default_key="7IPR19mk6hmUY+hdYUaCIw=="
 so_key=$so_default_key
-which opensslz >>$LOG_FILE 2>&1
+which openssl >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
-  so_key="$(opensslz rand -base64 16)"
+  so_key="$(openssl rand -base64 16)"
   rc=$?
 fi
 if [ $rc == 0 ]; then
