@@ -20,7 +20,7 @@ LHOST=""
 LPORT=""
 
 MSFVENOM=msfvenom
-DEX2JAR=d2j-dex2jar
+DEX2JAR=third-party/dex2jar-2.0/d2j-dex2jar.sh
 UNZIP=unzip
 KEYTOOL=keytool
 JARSIGNER=jarsigner
