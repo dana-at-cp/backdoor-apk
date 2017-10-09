@@ -3,6 +3,17 @@
 Release History
 ---------------
 
+0.2.3 (2017-10-09)
+++++++++++++++++++
+
+**Improvements**
+
+- Provided an option to keep original Android manifest permissions or to merge with those found in the Metasploit Android APK
+
+**Bug Fixes**
+
+- Fixed a bug that resulted in duplicate permissions in the Android manifest when merged
+
 0.2.2 (2017-03-31)
 ++++++++++++++++++
 

