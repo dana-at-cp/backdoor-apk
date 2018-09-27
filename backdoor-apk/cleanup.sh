@@ -20,6 +20,7 @@ rmdirz bin
 rmdirz libs
 rmdirz original
 rmdirz payload
+rmdirz tmp
 
 rmfilez Rat.apk
 rmfilez perms.tmp
