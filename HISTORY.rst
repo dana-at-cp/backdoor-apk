@@ -3,6 +3,19 @@
 Release History
 ---------------
 
+0.2.4 (2018-09-27)
+++++++++++++++++++
+
+**Improvements**
+
+- Removed proguard as the Metasploit msfvenom tool used to create the Android RAT payloads now uses it
+- Hooking and injection logic
+
+**Bug Fixes**
+
+- Fixed various issues identified with RAT payloads generaeted with more recent versions of msfvenom
+- Fixed issue with the const-string obfuscation technique that could silently break recompiled APKs
+
 0.2.3 (2017-10-09)
 ++++++++++++++++++
 

@@ -5,7 +5,7 @@
 # usage: ./backdoor-apk.sh original.apk
 
 # Dana James Traversie
-# Security Engineer
+# Security Architect | Hacker-in-Residence
 # Check Point Software Technologies, Ltd.
 
 # IMPORTANT: The following packages were required on Kali Linux
@@ -13,7 +13,7 @@
 #   required by other Linux distros as well.
 # apt-get install lib32z1 lib32ncurses5 lib32stdc++6
 
-VERSION="0.2.3"
+VERSION="0.2.4"
 
 PAYLOAD=""
 LHOST=""

