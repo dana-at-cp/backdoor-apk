@@ -19,7 +19,7 @@ ________|__________|__________________________________________
        /____________\
        |____________|            Dana James Traversie
 
-[*] Running backdoor-apk.sh v0.2.4 on Thu Sep 27 17:13:34 EDT 2018
+[*] Running backdoor-apk.sh v0.2.4a on Fri Sep 28 17:13:37 EDT 2018
 [+] Android payload options:
 1) meterpreter/reverse_http   4) shell/reverse_http
 2) meterpreter/reverse_https  5) shell/reverse_https

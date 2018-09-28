@@ -3,6 +3,13 @@
 Release History
 ---------------
 
+0.2.4a (2018-09-28)
++++++++++++++++++++
+
+**Bug Fixes**
+
+- Fixed issue signing a recompiled APK with the original APK not in the same directory as the backdoor-apk.sh script
+
 0.2.4 (2018-09-27)
 ++++++++++++++++++
 
